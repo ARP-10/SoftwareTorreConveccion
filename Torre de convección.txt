@@ -1,0 +1,7 @@
+- Desde el microcontrolador me llega la info por usb
+- Recibiría el dato con su unidad 
+- Son 5 datos los que se reciben, separados por tabulaciones
+- Yo devuelvo un valor entre 0 y 255 (un numero)
+- Cada medio segundo recibo la lista de los 5 valores
+- grados centígrados (2, sensor de arriba y el de abajo), watios, velocidad del aire, termopar(otra temperatura) (en el labview se llaman: temp entrada, temp salida, temp termopar, velocidad aire y potencia heater)
+- Al devolver, tengo que enviar un comando (readstringuntil)

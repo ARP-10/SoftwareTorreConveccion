@@ -1,0 +1,17 @@
+- Llamaremos software (sw) al programa del ordenador y firmware (fw) al programa del microcontrolador
+- Poder hacerlo ejecutable en version de windows (ya sea 32 o 64 bits) y diferentes versiones de windows 10, 11, etc
+- Mirar a ver si es posible que funcione en Mac (programando en python)
+- Hacer que el programa se pueda comunicar con nuestro servidor, para actualizar de forma remota también y recibir datos de uso
+- Comunicación remota con el equipo, de forma inalámbrica, el equipo tendría o wifi o bluetooth
+- Poder conectarnos a la maquina a traves de internet, para poder hacer practicas a traves de internet
+- Establecer la forma de comunicar el microcontrolador y el software del ordenador
+- El equipo tiene que poder controlarse desde el software
+- El software (del ordenador) debe leer los valores y parámetros del equipo
+- El software debe poder guardar los datos hechos en la practica en una tabla y se tienen que poder exportar a excel o csv o similar 
+- El sw debe ser capaz de hacer practicas en automático, es decir, ir variando ciertos parámetros y registrando los datos recibidos
+- En el sw habrá pantallas de configuración de parámetros
+- El sw podrá estar en varios idiomas
+- El sw debe poder mostrar graficas con los resultados de las tablas
+- Posibilidad de que los datos se puedan mostrar en varios ordenadores a la vez y/o en dispositivos móviles
+- En el futuro posibilidad de que los profesores y los alumnos tengan su cuenta de usuario donde se almacenan sus datos de prácticas y el profesor pueda acceder a ellos para evaluar
+- Empezar por torre de convección
