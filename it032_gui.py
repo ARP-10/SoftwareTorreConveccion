@@ -478,6 +478,50 @@ class ResultsWindow(QWidget):
 # =======================================================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
+    # 🌙 Forzar modo oscuro global
+    app.setStyleSheet("""
+    QWidget {
+        background-color: #121212;
+        color: #f0f0f0;
+    }
+
+    QGroupBox {
+        border: 1px solid #333;
+        border-radius: 6px;
+        margin-top: 20px;           /* 🔹 margen superior mayor */
+        padding-top: 16px;          /* 🔹 separa el contenido del título */
+    }
+
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top left;
+        padding: 4px 12px;          /* 🔹 margen interno más cómodo */
+        margin-top: -10px;          /* 🔹 baja ligeramente el texto del título */
+        color: #e0e0e0;
+        font-weight: bold;
+        background-color: #121212;  /* 🔹 fondo igual al resto */
+    }
+
+    QPushButton {
+        background-color: #2c2c2c;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 4px 10px;
+    }
+
+    QPushButton:hover {
+        background-color: #444;
+    }
+
+    QLabel {
+        color: #f0f0f0;
+    }
+""")
+
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
