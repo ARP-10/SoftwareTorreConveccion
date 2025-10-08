@@ -1,4 +1,4 @@
-# it032_gui.py - versión con rueda (fan) y barra vertical (heat)
+# it032_gui.py - versión con rueda (fan), barra vertical (heat) y guardado de datos
 # -------------------------------------------------------
 
 from PyQt6.QtWidgets import (
@@ -9,11 +9,15 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QHBoxLayout,
-    QProgressBar,
     QGroupBox,
     QDial,
     QMessageBox,
     QSlider,
+    QTableWidget,
+    QTableWidgetItem,
+    QFileDialog,
+    QStyleOptionSlider, 
+    QStyle
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -21,6 +25,7 @@ import sys
 import time
 import pyqtgraph as pg
 import it032_core as core
+import pandas as pd
 
 
 # =======================================================
@@ -61,12 +66,13 @@ class MainWindow(QMainWindow):
         self.ser = None
         self.offsets = [0, 0, 0, 0, 0]
         self.reader_thread = None
+        self.data_records = []
 
         font_title = QFont("Segoe UI", 14, QFont.Weight.Bold)
         font_value = QFont("Segoe UI", 12)
 
         # =======================================================
-        # 📊 MEDIDAS EN TIEMPO REAL (izquierda)
+        # 📊 MEDIDAS EN TIEMPO REAL
         # =======================================================
         group_lecturas = QGroupBox("📊 Medidas en tiempo real")
         group_lecturas.setFont(font_title)
@@ -86,12 +92,12 @@ class MainWindow(QMainWindow):
         group_lecturas.setLayout(v_lecturas)
 
         # =======================================================
-        # ⚙️ CONTROL DEL EQUIPO (derecha)
+        # ⚙️ CONTROL DEL EQUIPO
         # =======================================================
         group_control = QGroupBox("⚙️ Control del equipo")
         group_control.setFont(font_title)
 
-        # --- Ventilador: rueda (QDial) ---
+        # Ventilador (rueda)
         self.dial_fan = QDial()
         self.dial_fan.setRange(0, 255)
         self.dial_fan.setNotchesVisible(True)
@@ -112,15 +118,48 @@ class MainWindow(QMainWindow):
         v_fan.addWidget(self.lbl_fan)
         v_fan.addWidget(self.dial_fan, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # --- Calefactor: barra vertical (QSlider) ---
+        # --- Calefactor ---
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
-        self.slider_heat.setFixedSize(60, 180)
-        self.slider_heat.setFixedHeight(180)
+        self.slider_heat.setInvertedAppearance(False)
         self.slider_heat.setRange(0, 255)
-        self.slider_heat.setFixedSize(90, 180)
+        self.slider_heat.setFixedSize(90, 180)  # 👈 misma altura que el ventilador
+        self.slider_heat.setSingleStep(5)
+        self.slider_heat.setPageStep(10)
+        self.slider_heat.setTickPosition(QSlider.TickPosition.TicksBothSides)
+        self.slider_heat.setTickInterval(25)
+
         self.lbl_heat = QLabel("Calefactor (HEAT): 0 %")
         self.lbl_heat.setFont(font_value)
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # --- Apariencia personalizada (estilo de calor) ---
+        self.slider_heat.setStyleSheet("""
+            QSlider {
+                background: transparent;
+            }
+            QSlider::groove:vertical {
+                width: 40px;                      
+                border-radius: 10px;
+                background: qlineargradient(
+                    x1:0, y1:1, x2:0, y2:0,
+                    stop:0 #e74c3c,   /* rojo abajo */
+                    stop:1 #3a3a3a    /* gris arriba */
+                );
+                margin: px;
+            }
+
+            QSlider::handle:vertical {
+                background: #ffffff;
+                border: 2px solid #e74c3c;
+                height: 20px;                     /* tamaño del mango */
+                margin: -2px -16px;
+                border-radius: 10px;
+            }
+            QSlider::sub-page:vertical {
+                background: #e74c3c;
+                border-radius: 10px;
+            }
+        """)
 
         self.slider_heat.valueChanged.connect(
             lambda v: self.lbl_heat.setText(f"Calefactor (HEAT): {int(v/2.55):3d} %")
@@ -133,7 +172,7 @@ class MainWindow(QMainWindow):
         v_heat.addWidget(self.lbl_heat)
         v_heat.addWidget(self.slider_heat, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # --- Agrupar ambos controles horizontalmente ---
+
         h_control = QHBoxLayout()
         h_control.addLayout(v_fan)
         h_control.addLayout(v_heat)
@@ -143,32 +182,57 @@ class MainWindow(QMainWindow):
         # =======================================================
         # 📈 GRÁFICA
         # =======================================================
-        group_grafica = QGroupBox("📈 Gráfica de temperaturas")
+        group_grafica = QGroupBox("📈 Gráfica en tiempo real")
         group_grafica.setFont(font_title)
+
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("#1e1e2e")
         self.plot_widget.addLegend()
         self.plot_widget.setLabel("left", "Temperatura (°C)")
         self.plot_widget.setLabel("bottom", "Tiempo (s)")
-        self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("r", width=2), name="Entrada (TE)"
-        )
-        self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("y", width=2), name="Salida (TS)"
-        )
-        self.curve_tc = self.plot_widget.plot(
-            pen=pg.mkPen("g", width=2), name="Termopar (TC)"
-        )
+
+        # Curvas: todas las variables
+        self.curve_te = self.plot_widget.plot(pen=pg.mkPen("r", width=2), name="TE (Entrada)")
+        self.curve_ts = self.plot_widget.plot(pen=pg.mkPen("y", width=2), name="TS (Salida)")
+        self.curve_tc = self.plot_widget.plot(pen=pg.mkPen("g", width=2), name="TC (Termopar)")
         self.curve_vel = self.plot_widget.plot(
-            pen=pg.mkPen("c", style=Qt.PenStyle.DotLine, width=2),
-            name="Velocidad (m/s)"
+            pen=pg.mkPen("c", style=Qt.PenStyle.DotLine, width=2), name="Velocidad (m/s)"
         )
         self.curve_pot = self.plot_widget.plot(
-            pen=pg.mkPen("m", style=Qt.PenStyle.DashLine, width=2),
-            name="Potencia (W)"
+            pen=pg.mkPen("m", style=Qt.PenStyle.DashLine, width=2), name="Potencia (W)"
         )
+
+        # ✅ Checkboxes para mostrar/ocultar variables
+        from PyQt6.QtWidgets import QCheckBox
+
+        self.chk_te = QCheckBox("TE")
+        self.chk_ts = QCheckBox("TS")
+        self.chk_tc = QCheckBox("TC")
+        self.chk_vel = QCheckBox("Vel")
+        self.chk_pot = QCheckBox("Pot")
+
+        # Activadas por defecto
+        for chk in [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]:
+            chk.setChecked(True)
+            chk.setStyleSheet("color: white; font-size: 13px;")
+
+        # Vincular los checkboxes con la función de visibilidad
+        self.chk_te.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_ts.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_tc.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_vel.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_pot.stateChanged.connect(self.toggle_curve_visibility)
+
+        # Layout para los checkboxes
+        h_checks = QHBoxLayout()
+        for chk in [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]:
+            h_checks.addWidget(chk)
+        h_checks.addStretch()
+
+        # Layout completo de la gráfica
         v_graf = QVBoxLayout()
         v_graf.addWidget(self.plot_widget)
+        v_graf.addLayout(h_checks)
         group_grafica.setLayout(v_graf)
 
         # =======================================================
@@ -178,6 +242,8 @@ class MainWindow(QMainWindow):
         self.btn_calibrar = QPushButton("🧭 Calibrar")
         self.btn_iniciar = QPushButton("▶️ Iniciar")
         self.btn_detener = QPushButton("⏹️ Detener")
+        self.btn_guardar = QPushButton("💾 Guardar dato")
+        self.btn_resultados = QPushButton("📊 Ver resultados")
         self.btn_salir = QPushButton("🚪 Salir")
 
         for b in [
@@ -185,6 +251,8 @@ class MainWindow(QMainWindow):
             self.btn_calibrar,
             self.btn_iniciar,
             self.btn_detener,
+            self.btn_guardar,
+            self.btn_resultados,
             self.btn_salir,
         ]:
             b.setFixedHeight(32)
@@ -196,6 +264,8 @@ class MainWindow(QMainWindow):
             self.btn_calibrar,
             self.btn_iniciar,
             self.btn_detener,
+            self.btn_guardar,
+            self.btn_resultados,
             self.btn_salir,
         ]:
             h_botones.addWidget(b)
@@ -217,61 +287,14 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
         # =======================================================
-        # ESTILO VISUAL
-        # =======================================================
-        self.setStyleSheet(
-            """
-            QMainWindow { background-color: #1b1b1b; }
-            QGroupBox {
-                border: 2px solid #3e3e50;
-                border-radius: 8px;
-                margin-top: 10px;
-                color: #ffffff;
-                padding: 14px;
-            }
-            QGroupBox::title {
-                padding-bottom: 8px;
-                font-weight: bold;
-                font-size: 15px;
-            }
-            QLabel { color: #dddddd; }
-            QDial {
-                background-color: #222;
-            }
-            QSlider::groove:vertical {
-                width: 40px;
-                background: qlineargradient(
-                    x1:0, y1:1, x2:0, y2:0,
-                    stop:0 #3a3a3a,
-                    stop:1 #5a5a5a
-                );
-                border-radius: 6px;
-                margin: 4px;
-            }
-            QSlider::handle:vertical {
-                background: #e74c3c;
-                border-radius: 8px;
-                height: 18px;
-                margin: -2px -10px;
-            }
-            QPushButton {
-                background-color: #2b2b3c;
-                border: 1px solid #3e3e50;
-                border-radius: 6px;
-                color: #ffffff;
-                padding: 4px;
-            }
-            QPushButton:hover { background-color: #3d3d5c; }
-        """
-        )
-
-        # =======================================================
         # CONEXIÓN DE EVENTOS
         # =======================================================
         self.btn_conectar.clicked.connect(self.conectar)
         self.btn_calibrar.clicked.connect(self.calibrar)
         self.btn_iniciar.clicked.connect(self.iniciar_lectura)
         self.btn_detener.clicked.connect(self.detener_lectura)
+        self.btn_guardar.clicked.connect(self.guardar_dato)
+        self.btn_resultados.clicked.connect(self.mostrar_resultados)
         self.btn_salir.clicked.connect(self.cerrar_programa)
 
         # =======================================================
@@ -281,14 +304,12 @@ class MainWindow(QMainWindow):
         self.t0 = time.time()
 
     # =======================================================
-    # FUNCIONES
+    # FUNCIONES PRINCIPALES
     # =======================================================
     def conectar(self):
         port = core.detectar_puerto()
         if not port:
-            QMessageBox.warning(
-                self, "Conexión fallida", "No se detectó el equipo por USB."
-            )
+            QMessageBox.warning(self, "Conexión fallida", "No se detectó el equipo por USB.")
             return
         self.ser = core.serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
         QMessageBox.information(self, "Conectado", f"Equipo detectado en {port}")
@@ -298,9 +319,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
             return
         self.offsets = core.calibrar_sensores(self.ser)
-        QMessageBox.information(
-            self, "Calibración", "Calibración completada correctamente."
-        )
+        QMessageBox.information(self, "Calibración", "Calibración completada correctamente.")
 
     def iniciar_lectura(self):
         if not self.ser:
@@ -309,17 +328,13 @@ class MainWindow(QMainWindow):
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
-        QMessageBox.information(
-            self, "Lectura iniciada", "El equipo está transmitiendo datos."
-        )
+        QMessageBox.information(self, "Lectura iniciada", "El equipo está transmitiendo datos.")
 
     def detener_lectura(self):
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
-            QMessageBox.information(
-                self, "Lectura detenida", "La lectura de datos ha sido detenida."
-            )
+            QMessageBox.information(self, "Lectura detenida", "La lectura de datos ha sido detenida.")
 
     def actualizar_datos(self, te, ts, tc, vel, pot):
         self.lbl_te.setText(f"Entrada (TE): {te:.2f} °C")
@@ -337,12 +352,9 @@ class MainWindow(QMainWindow):
         self.data_pot.append(pot)
 
         if len(self.data_x) > 200:
-            self.data_x = self.data_x[-200:]
-            self.data_te = self.data_te[-200:]
-            self.data_ts = self.data_ts[-200:]
-            self.data_tc = self.data_tc[-200:]
-            self.data_vel = self.data_vel[-200:]
-            self.data_pot = self.data_pot[-200:]
+            self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot = [
+                lst[-200:] for lst in [self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot]
+            ]
 
         self.curve_te.setData(self.data_x, self.data_te)
         self.curve_ts.setData(self.data_x, self.data_ts)
@@ -350,6 +362,33 @@ class MainWindow(QMainWindow):
         self.curve_vel.setData(self.data_x, self.data_vel)
         self.curve_pot.setData(self.data_x, self.data_pot)
 
+    def toggle_curve_visibility(self):
+        self.curve_te.setVisible(self.chk_te.isChecked())
+        self.curve_ts.setVisible(self.chk_ts.isChecked())
+        self.curve_tc.setVisible(self.chk_tc.isChecked())
+        self.curve_vel.setVisible(self.chk_vel.isChecked())
+        self.curve_pot.setVisible(self.chk_pot.isChecked())
+
+
+
+    def guardar_dato(self):
+        try:
+            te = float(self.lbl_te.text().split(":")[1].replace("°C", "").strip())
+            ts = float(self.lbl_ts.text().split(":")[1].replace("°C", "").strip())
+            tc = float(self.lbl_tc.text().split(":")[1].replace("°C", "").strip())
+            vel = float(self.lbl_vel.text().split(":")[1].replace("m/s", "").strip())
+            pot = float(self.lbl_pot.text().split(":")[1].replace("W", "").strip())
+            self.data_records.append([te, ts, tc, vel, pot])
+            QMessageBox.information(self, "Dato guardado", "Se ha guardado la lectura en la tabla.")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"No se pudo guardar el dato: {e}")
+
+    def mostrar_resultados(self):
+        if not self.data_records:
+            QMessageBox.warning(self, "Sin datos", "No hay datos guardados para mostrar.")
+            return
+        self.results_window = ResultsWindow(self.data_records)
+        self.results_window.show()
 
     def cerrar_programa(self):
         if self.reader_thread:
@@ -359,6 +398,79 @@ class MainWindow(QMainWindow):
             self.ser.close()
             time.sleep(1)
         self.close()
+
+
+# =======================================================
+# Ventana de resultados
+# =======================================================
+class ResultsWindow(QWidget):
+    def __init__(self, data_records):
+        super().__init__()
+        self.setWindowTitle("📊 Resultados de la práctica")
+        self.resize(900, 600)
+        self.data_records = data_records
+
+        # --- Tabla de datos ---
+        self.table = QTableWidget()
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"])
+        self.update_table()
+
+        # --- Gráfica (más pequeña) ---
+        self.plot_widget = pg.PlotWidget()
+        self.plot_widget.addLegend()
+        self.plot_widget.setBackground("#1e1e2e")
+        self.plot_widget.setLabel("left", "Valor")
+        self.plot_widget.setLabel("bottom", "Muestra")
+        self.plot_widget.setFixedHeight(220)  # 👈 tamaño reducido de la gráfica
+        self.update_plot()
+
+        # --- Botones ---
+        btn_export_xlsx = QPushButton("📗 Exportar Excel")
+        btn_close = QPushButton("🚪 Cerrar")
+
+        btn_export_xlsx.clicked.connect(self.export_excel)
+        btn_close.clicked.connect(self.close)
+
+        h_btns = QHBoxLayout()
+        for b in [btn_export_xlsx, btn_close]:
+            h_btns.addWidget(b)
+
+        # --- Layout general ---
+        layout = QVBoxLayout()
+        layout.addWidget(self.table, stretch=2)
+        layout.addWidget(self.plot_widget, stretch=1)
+        layout.addLayout(h_btns)
+        self.setLayout(layout)
+
+    def update_table(self):
+        """Actualiza la tabla con todos los datos guardados"""
+        self.table.setRowCount(len(self.data_records))
+        for i, record in enumerate(self.data_records):
+            for j, val in enumerate(record):
+                self.table.setItem(i, j, QTableWidgetItem(f"{val:.2f}"))
+
+    def update_plot(self):
+        """Actualiza la gráfica con todos los datos de la tabla"""
+        self.plot_widget.clear()  # 👈 limpia la gráfica anterior antes de dibujar
+        if not self.data_records:
+            return
+
+        df = pd.DataFrame(self.data_records, columns=["TE", "TS", "TC", "Vel", "Pot"])
+        x = list(range(1, len(df) + 1))
+        self.plot_widget.plot(x, df["TE"], pen=pg.mkPen("b", width=2), name="TE (°C)")
+        self.plot_widget.plot(x, df["TS"], pen=pg.mkPen("r", width=2), name="TS (°C)")
+        self.plot_widget.plot(x, df["TC"], pen=pg.mkPen("g", width=2), name="TC (°C)")
+        self.plot_widget.plot(x, df["Vel"], pen=pg.mkPen("c", width=2, style=Qt.PenStyle.DotLine), name="Vel (m/s)")
+        self.plot_widget.plot(x, df["Pot"], pen=pg.mkPen("m", width=2, style=Qt.PenStyle.DashLine), name="Pot (W)")
+
+    def export_excel(self):
+        """Exporta los datos a Excel (.xlsx)"""
+        path, _ = QFileDialog.getSaveFileName(self, "Guardar Excel", "", "Excel Files (*.xlsx)")
+        if path:
+            df = pd.DataFrame(self.data_records, columns=["TE", "TS", "TC", "Vel", "Pot"])
+            df.to_excel(path, index=False)
+            QMessageBox.information(self, "Exportación", "Archivo Excel guardado correctamente.")
 
 
 # =======================================================
