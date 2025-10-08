@@ -5,3 +5,7 @@
 - Cada medio segundo recibo la lista de los 5 valores
 - grados centígrados (2, sensor de arriba y el de abajo), watios, velocidad del aire, termopar(otra temperatura) (en el labview se llaman: temp entrada, temp salida, temp termopar, velocidad aire y potencia heater)
 - Al devolver, tengo que enviar un comando (readstringuntil)
+
+TAREAS:
+- Hacer que la grafica sea capaz de mostrar datos durante al menos 20 mins. Hasta ahora parece que cuando lleva x tiempo sustituye los priemros datos por los nuevos que entran, por lo que la grafica es finita
+- Hacer una sola pantalla donde podamos ver tanto la grafica + valores como la tabla (guardar dato + exportar a excel)
