@@ -156,24 +156,66 @@ class MainWindow(QMainWindow):
         h_control.addLayout(v_heat)
         group_control.setLayout(h_control)
 
-        # =======================================================
+       # =======================================================
         # 📈 GRÁFICA
         # =======================================================
         group_grafica = QGroupBox("📈 Gráfica en tiempo real")
         group_grafica.setFont(font_title)
+
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("#1e1e2e")
         self.plot_widget.setLabel("left", "Temperatura (°C)")
         self.plot_widget.setLabel("bottom", "Tiempo (s)")
-        self.curve_te = self.plot_widget.plot(pen=pg.mkPen("r", width=2), name="TE")
-        self.curve_ts = self.plot_widget.plot(pen=pg.mkPen("y", width=2), name="TS")
-        self.curve_tc = self.plot_widget.plot(pen=pg.mkPen("g", width=2), name="TC")
-        self.curve_vel = self.plot_widget.plot(pen=pg.mkPen("c", width=2), name="Vel")
-        self.curve_pot = self.plot_widget.plot(pen=pg.mkPen("m", width=2), name="Pot")
 
-        v_grafica = QVBoxLayout()
-        v_grafica.addWidget(self.plot_widget)
-        group_grafica.setLayout(v_grafica)
+        # Curvas
+        self.curve_te = self.plot_widget.plot(pen=pg.mkPen("r", width=2), name="TE (Entrada)")
+        self.curve_ts = self.plot_widget.plot(pen=pg.mkPen("y", width=2), name="TS (Salida)")
+        self.curve_tc = self.plot_widget.plot(pen=pg.mkPen("g", width=2), name="TC (Termopar)")
+        self.curve_vel = self.plot_widget.plot(pen=pg.mkPen("c", style=Qt.PenStyle.DotLine, width=2), name="Velocidad (m/s)")
+        self.curve_pot = self.plot_widget.plot(pen=pg.mkPen("m", style=Qt.PenStyle.DashLine, width=2), name="Potencia (W)")
+
+        # Checkboxes con color
+        def color_box(color):
+            frame = QFrame()
+            frame.setFixedSize(16, 16)
+            frame.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
+            return frame
+
+        self.chk_te = QCheckBox("Entrada (TE)")
+        self.chk_ts = QCheckBox("Salida (TS)")
+        self.chk_tc = QCheckBox("Termopar (TC)")
+        self.chk_vel = QCheckBox("Velocidad (m/s)")
+        self.chk_pot = QCheckBox("Potencia (W)")
+
+        for chk in [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]:
+            chk.setChecked(True)
+            chk.setStyleSheet("color: white; font-size: 13px;")
+
+        self.chk_te.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_ts.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_tc.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_vel.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_pot.stateChanged.connect(self.toggle_curve_visibility)
+
+        # Leyenda lateral a la derecha
+        v_legend = QVBoxLayout()
+        for color, chk in zip(
+            ["#ff4c4c", "#ffff66", "#66ff66", "#66ffff", "#ff66ff"],
+            [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
+        ):
+            row = QHBoxLayout()
+            row.addWidget(color_box(color))
+            row.addSpacing(6)
+            row.addWidget(chk)
+            row.addStretch()
+            v_legend.addLayout(row)
+        v_legend.addStretch()
+
+        # Gráfica + leyenda lado a lado
+        h_graf = QHBoxLayout()
+        h_graf.addWidget(self.plot_widget, stretch=4)
+        h_graf.addLayout(v_legend, stretch=1)
+        group_grafica.setLayout(h_graf)
 
         # =======================================================
         # 🧮 TABLA DE RESULTADOS
@@ -346,10 +388,11 @@ class MainWindow(QMainWindow):
         self.data_vel.append(vel)
         self.data_pot.append(pot)
 
-        if len(self.data_x) > 200:
-            self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot = [
-                lst[-200:] for lst in [self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot]
-            ]
+        # Evita que la memoria se sature (limitado a 200 puntos)
+        # if len(self.data_x) > 200:
+        #     self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot = [
+        #         lst[-200:] for lst in [self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot]
+        #     ]
 
         self.curve_te.setData(self.data_x, self.data_te)
         self.curve_ts.setData(self.data_x, self.data_ts)
