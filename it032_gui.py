@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("IT 03.2 – Convección Natural y Forzada (DIKOIN)")
-        self.resize(1300, 700)
+        self.resize(1500, 750)
 
         self.ser = None
         self.offsets = [0, 0, 0, 0, 0]
@@ -103,8 +103,9 @@ class MainWindow(QMainWindow):
         self.dial_fan.setRange(0, 255)
         self.dial_fan.setNotchesVisible(True)
         self.dial_fan.setFixedSize(180, 180)
+        self.dial_fan.setWrapping(False)
         self.lbl_fan = QLabel("Ventilador (FAN): 0 %")
-        font_small = QFont("Verdana", 11) 
+        font_small = QFont("Verdana", 11)
         self.lbl_fan.setFont(font_small)
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dial_fan.valueChanged.connect(
@@ -122,7 +123,7 @@ class MainWindow(QMainWindow):
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(90, 180)
         self.lbl_heat = QLabel("Calefactor (HEAT): 0 %")
-        font_small = QFont("Verdana", 11) 
+        font_small = QFont("Verdana", 11)
         self.lbl_heat.setFont(font_small)
 
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -131,17 +132,18 @@ class MainWindow(QMainWindow):
             QSlider::groove:vertical {
                 width: 40px;
                 border-radius: 10px;
+                margin: 10px 0;
                 background: qlineargradient(
                     x1:0, y1:1, x2:0, y2:0,
-                    stop:0 #3a3a3a,
-                    stop:1 #e74c3c
+                    stop:0 #80D8FF,
+                    stop:1 #007EB8
                 );
             }
             QSlider::handle:vertical {
                 background: #fff;
-                border: 2px solid #e74c3c;
-                height: 20px;
-                margin: -2px -16px;
+                border: 2px solid #007EB8;
+                height: 22px;
+                margin: -4px -14px;
                 border-radius: 10px;
             }
         """
@@ -176,20 +178,24 @@ class MainWindow(QMainWindow):
 
         # Actualiza los colores de las curvas
         self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("#007EB8", width=2), name="TE (Entrada)"
+            pen=pg.mkPen("#E74C3C", width=2), name="TE (Entrada)"  # rojo vivo
         )
         self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("#00B8A9", width=2), name="TS (Salida)"
+            pen=pg.mkPen("#3498DB", width=2), name="TS (Salida)"  # azul medio
         )
         self.curve_tc = self.plot_widget.plot(
-            pen=pg.mkPen("#333333", width=2), name="TC (Termopar)"
+            pen=pg.mkPen("#27AE60", width=2), name="TC (Termopar)"  # verde intenso
         )
         self.curve_vel = self.plot_widget.plot(
-            pen=pg.mkPen("#666666", style=Qt.PenStyle.DotLine, width=2),
+            pen=pg.mkPen(
+                "#F39C12", style=Qt.PenStyle.DotLine, width=2
+            ),  # naranja punteado
             name="Velocidad",
         )
         self.curve_pot = self.plot_widget.plot(
-            pen=pg.mkPen("#999999", style=Qt.PenStyle.DashLine, width=2),
+            pen=pg.mkPen(
+                "#8E44AD", style=Qt.PenStyle.DashLine, width=2
+            ),  # violeta discontinuo
             name="Potencia",
         )
 
@@ -219,7 +225,7 @@ class MainWindow(QMainWindow):
         # Leyenda lateral a la derecha
         v_legend = QVBoxLayout()
         for color, chk in zip(
-            ["#ff4c4c", "#ffff66", "#66ff66", "#66ffff", "#ff66ff"],
+            ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
             [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
         ):
             row = QHBoxLayout()
@@ -323,8 +329,8 @@ class MainWindow(QMainWindow):
 
         # Layout principal: izquierda (funcional) + derecha (tabla)
         main_layout = QHBoxLayout()
-        main_layout.addLayout(left_layout, 2)
-        main_layout.addWidget(group_tabla, 1)
+        main_layout.addLayout(left_layout, 3)
+        main_layout.addWidget(group_tabla, 2)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -688,6 +694,56 @@ if __name__ == "__main__":
         color: #000000;
         font-size: 13px;
     }
+
+        /* === SCROLLBAR PERSONALIZADO === */
+    QScrollBar:vertical {
+        border: none;
+        background: #F2F6F8;
+        width: 10px;
+        margin: 0px 0px 0px 0px;
+        border-radius: 5px;
+    }
+
+    QScrollBar::handle:vertical {
+        background: #007EB8;
+        min-height: 20px;
+        border-radius: 5px;
+    }
+
+    QScrollBar::handle:vertical:hover {
+        background: #009EE0;
+    }
+
+    QScrollBar::handle:vertical:pressed {
+        background: #005C87;
+    }
+
+    QScrollBar::add-line:vertical,
+    QScrollBar::sub-line:vertical {
+        border: none;
+        background: none;
+    }
+
+    QScrollBar:horizontal {
+        height: 10px;
+        background: #F2F6F8;
+        border: none;
+        border-radius: 5px;
+    }
+
+    QScrollBar::handle:horizontal {
+        background: #007EB8;
+        border-radius: 5px;
+    }
+
+    QScrollBar::handle:horizontal:hover {
+        background: #009EE0;
+    }
+
+    QScrollBar::handle:horizontal:pressed {
+        background: #005C87;
+    }
+
 """
     )
 
