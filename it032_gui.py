@@ -104,7 +104,8 @@ class MainWindow(QMainWindow):
         self.dial_fan.setNotchesVisible(True)
         self.dial_fan.setFixedSize(180, 180)
         self.lbl_fan = QLabel("Ventilador (FAN): 0 %")
-        self.lbl_fan.setFont(font_value)
+        font_small = QFont("Verdana", 11) 
+        self.lbl_fan.setFont(font_small)
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dial_fan.valueChanged.connect(
             lambda v: self.lbl_fan.setText(f"Ventilador (FAN): {int(v/2.55):3d} %")
@@ -121,16 +122,19 @@ class MainWindow(QMainWindow):
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(90, 180)
         self.lbl_heat = QLabel("Calefactor (HEAT): 0 %")
-        self.lbl_heat.setFont(font_value)
+        font_small = QFont("Verdana", 11) 
+        self.lbl_heat.setFont(font_small)
+
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.slider_heat.setStyleSheet("""
+        self.slider_heat.setStyleSheet(
+            """
             QSlider::groove:vertical {
                 width: 40px;
                 border-radius: 10px;
                 background: qlineargradient(
                     x1:0, y1:1, x2:0, y2:0,
-                    stop:0 #e74c3c,
-                    stop:1 #3a3a3a
+                    stop:0 #3a3a3a,
+                    stop:1 #e74c3c
                 );
             }
             QSlider::handle:vertical {
@@ -140,7 +144,8 @@ class MainWindow(QMainWindow):
                 margin: -2px -16px;
                 border-radius: 10px;
             }
-        """)
+        """
+        )
         self.slider_heat.valueChanged.connect(
             lambda v: self.lbl_heat.setText(f"Calefactor (HEAT): {int(v/2.55):3d} %")
         )
@@ -156,23 +161,37 @@ class MainWindow(QMainWindow):
         h_control.addLayout(v_heat)
         group_control.setLayout(h_control)
 
-       # =======================================================
+        # =======================================================
         # 📈 GRÁFICA
         # =======================================================
         group_grafica = QGroupBox("📈 Gráfica en tiempo real")
         group_grafica.setFont(font_title)
 
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground("#1e1e2e")
-        self.plot_widget.setLabel("left", "Temperatura (°C)")
-        self.plot_widget.setLabel("bottom", "Tiempo (s)")
+        # === Apariencia clara para la gráfica ===
+        self.plot_widget.setBackground("#FFFFFF")
+        self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_widget.setLabel("left", "Valor", color="#000000")
+        self.plot_widget.setLabel("bottom", "Tiempo (s)", color="#000000")
 
-        # Curvas
-        self.curve_te = self.plot_widget.plot(pen=pg.mkPen("r", width=2), name="TE (Entrada)")
-        self.curve_ts = self.plot_widget.plot(pen=pg.mkPen("y", width=2), name="TS (Salida)")
-        self.curve_tc = self.plot_widget.plot(pen=pg.mkPen("g", width=2), name="TC (Termopar)")
-        self.curve_vel = self.plot_widget.plot(pen=pg.mkPen("c", style=Qt.PenStyle.DotLine, width=2), name="Velocidad (m/s)")
-        self.curve_pot = self.plot_widget.plot(pen=pg.mkPen("m", style=Qt.PenStyle.DashLine, width=2), name="Potencia (W)")
+        # Actualiza los colores de las curvas
+        self.curve_te = self.plot_widget.plot(
+            pen=pg.mkPen("#007EB8", width=2), name="TE (Entrada)"
+        )
+        self.curve_ts = self.plot_widget.plot(
+            pen=pg.mkPen("#00B8A9", width=2), name="TS (Salida)"
+        )
+        self.curve_tc = self.plot_widget.plot(
+            pen=pg.mkPen("#333333", width=2), name="TC (Termopar)"
+        )
+        self.curve_vel = self.plot_widget.plot(
+            pen=pg.mkPen("#666666", style=Qt.PenStyle.DotLine, width=2),
+            name="Velocidad",
+        )
+        self.curve_pot = self.plot_widget.plot(
+            pen=pg.mkPen("#999999", style=Qt.PenStyle.DashLine, width=2),
+            name="Potencia",
+        )
 
         # Checkboxes con color
         def color_box(color):
@@ -189,7 +208,7 @@ class MainWindow(QMainWindow):
 
         for chk in [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]:
             chk.setChecked(True)
-            chk.setStyleSheet("color: white; font-size: 13px;")
+            chk.setStyleSheet("color: #000000; font-size: 13px; font-weight: 500;")
 
         self.chk_te.stateChanged.connect(self.toggle_curve_visibility)
         self.chk_ts.stateChanged.connect(self.toggle_curve_visibility)
@@ -224,27 +243,36 @@ class MainWindow(QMainWindow):
         group_tabla.setFont(font_title)
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["#", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"])
+        self.table.setHorizontalHeaderLabels(
+            ["#", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"]
+        )
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet("""
+        # 💄 Estilo visual claro para la tabla
+        self.table.setStyleSheet(
+            """
             QTableWidget {
-                background-color: #1e1e1e;
-                alternate-background-color: #2a2a2a;
-                color: #f0f0f0;
-                gridline-color: #444;
-                selection-background-color: #333;
+                background-color: #FFFFFF;
+                alternate-background-color: #FFFFFF;
+                gridline-color: #CCCCCC;
+                color: #000000;
+                selection-background-color: #E6F4FB;
+                selection-color: #000000;
+                font-size: 13px;
             }
             QHeaderView::section {
-                background-color: #333;
-                color: #fff;
+                background-color: #007EB8;
+                color: #FFFFFF;
                 font-weight: bold;
-                border: 1px solid #444;
+                border: 1px solid #CCCCCC;
                 padding: 4px;
             }
-        """)
+        """
+        )
+
         header = self.table.horizontalHeader()
         from PyQt6.QtWidgets import QHeaderView
+
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         self.btn_export = QPushButton("📗 Exportar Excel")
@@ -267,7 +295,14 @@ class MainWindow(QMainWindow):
         self.btn_salir = QPushButton("🚪 Salir")
 
         h_botones = QHBoxLayout()
-        for b in [self.btn_conectar, self.btn_calibrar, self.btn_iniciar, self.btn_detener, self.btn_guardar, self.btn_salir]:
+        for b in [
+            self.btn_conectar,
+            self.btn_calibrar,
+            self.btn_iniciar,
+            self.btn_detener,
+            self.btn_guardar,
+            self.btn_salir,
+        ]:
             b.setFixedHeight(32)
             h_botones.addWidget(b)
 
@@ -282,9 +317,9 @@ class MainWindow(QMainWindow):
 
         # Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
-        left_layout.addLayout(top_layout)       # lecturas + control lado a lado
-        left_layout.addWidget(group_grafica)    # debajo la gráfica
-        left_layout.addLayout(h_botones)        # botones al final
+        left_layout.addLayout(top_layout)  # lecturas + control lado a lado
+        left_layout.addWidget(group_grafica)  # debajo la gráfica
+        left_layout.addLayout(h_botones)  # botones al final
 
         # Layout principal: izquierda (funcional) + derecha (tabla)
         main_layout = QHBoxLayout()
@@ -294,7 +329,6 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
-
 
         # =======================================================
         # EVENTOS
@@ -308,7 +342,14 @@ class MainWindow(QMainWindow):
         self.btn_salir.clicked.connect(self.cerrar_programa)
 
         # Variables de datos
-        self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot = [], [], [], [], [], []
+        (
+            self.data_x,
+            self.data_te,
+            self.data_ts,
+            self.data_tc,
+            self.data_vel,
+            self.data_pot,
+        ) = ([], [], [], [], [], [])
         self.t0 = time.time()
 
     # =======================================================
@@ -332,13 +373,20 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", f"No se pudo guardar el dato: {e}")
 
     def export_excel(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Guardar Excel", "", "Excel Files (*.xlsx)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Guardar Excel", "", "Excel Files (*.xlsx)"
+        )
         if path:
-            df = pd.DataFrame(self.data_records, columns=["TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"])
+            df = pd.DataFrame(
+                self.data_records,
+                columns=["TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"],
+            )
             df.index = df.index + 1
             df.index.name = "#"
             df.to_excel(path)
-            QMessageBox.information(self, "Exportación", "Archivo Excel guardado correctamente.")
+            QMessageBox.information(
+                self, "Exportación", "Archivo Excel guardado correctamente."
+            )
 
     # =======================================================
     # FUNCIONES PRINCIPALES
@@ -346,7 +394,9 @@ class MainWindow(QMainWindow):
     def conectar(self):
         port = core.detectar_puerto()
         if not port:
-            QMessageBox.warning(self, "Conexión fallida", "No se detectó el equipo por USB.")
+            QMessageBox.warning(
+                self, "Conexión fallida", "No se detectó el equipo por USB."
+            )
             return
         self.ser = core.serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
         QMessageBox.information(self, "Conectado", f"Equipo detectado en {port}")
@@ -356,7 +406,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
             return
         self.offsets = core.calibrar_sensores(self.ser)
-        QMessageBox.information(self, "Calibración", "Calibración completada correctamente.")
+        QMessageBox.information(
+            self, "Calibración", "Calibración completada correctamente."
+        )
 
     def iniciar_lectura(self):
         if not self.ser:
@@ -365,13 +417,17 @@ class MainWindow(QMainWindow):
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
-        QMessageBox.information(self, "Lectura iniciada", "El equipo está transmitiendo datos.")
+        QMessageBox.information(
+            self, "Lectura iniciada", "El equipo está transmitiendo datos."
+        )
 
     def detener_lectura(self):
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
-            QMessageBox.information(self, "Lectura detenida", "La lectura de datos ha sido detenida.")
+            QMessageBox.information(
+                self, "Lectura detenida", "La lectura de datos ha sido detenida."
+            )
 
     def actualizar_datos(self, te, ts, tc, vel, pot):
         self.lbl_te.setText(f"Entrada (TE): {te:.2f} °C")
@@ -409,7 +465,9 @@ class MainWindow(QMainWindow):
 
     def mostrar_resultados(self):
         if not self.data_records:
-            QMessageBox.warning(self, "Sin datos", "No hay datos guardados para mostrar.")
+            QMessageBox.warning(
+                self, "Sin datos", "No hay datos guardados para mostrar."
+            )
             return
         self.results_window = ResultsWindow(self.data_records)
         self.results_window.show()
@@ -437,11 +495,14 @@ class ResultsWindow(QWidget):
         # --- Tabla de datos ---
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["#", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"])
+        self.table.setHorizontalHeaderLabels(
+            ["#", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"]
+        )
         self.update_table()
 
         # 💄 Estilo visual mejorado
-        self.table.setStyleSheet("""
+        self.table.setStyleSheet(
+            """
             QTableWidget {
                 background-color: #1e1e1e;
                 alternate-background-color: #2a2a2a;
@@ -458,7 +519,8 @@ class ResultsWindow(QWidget):
                 border: 1px solid #444;
                 padding: 4px;
             }
-        """)
+        """
+        )
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
 
@@ -505,13 +567,21 @@ class ResultsWindow(QWidget):
 
     def export_excel(self):
         """Exporta los datos a Excel (.xlsx) incluyendo numeración"""
-        path, _ = QFileDialog.getSaveFileName(self, "Guardar Excel", "", "Excel Files (*.xlsx)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Guardar Excel", "", "Excel Files (*.xlsx)"
+        )
         if path:
-            df = pd.DataFrame(self.data_records, columns=["TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"])
+            df = pd.DataFrame(
+                self.data_records,
+                columns=["TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"],
+            )
             df.index = df.index + 1  # numeración desde 1
             df.index.name = "#"
             df.to_excel(path)
-            QMessageBox.information(self, "Exportación", "Archivo Excel guardado correctamente.")
+            QMessageBox.information(
+                self, "Exportación", "Archivo Excel guardado correctamente."
+            )
+
 
 # =======================================================
 # EJECUCIÓN
@@ -519,43 +589,107 @@ class ResultsWindow(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    app.setStyleSheet("""
-        QWidget {
-            background-color: #121212;
-            color: #f0f0f0;
-        }
-        QGroupBox {
-            border: 1px solid #333;
-            border-radius: 6px;
-            margin-top: 20px;
-            padding-top: 16px;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            padding: 4px 12px;
-            margin-top: -10px;
-            color: #e0e0e0;
-            font-weight: bold;
-            background-color: #121212;
-        }
-        QFrame {
-            background: transparent;
-        }
-        QPushButton {
-            background-color: #2c2c2c;
-            color: white;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 4px 10px;
-        }
-        QPushButton:hover {
-            background-color: #444;
-        }
-        QLabel {
-            color: #f0f0f0;
-        }
-    """)
+    app.setStyleSheet(
+        """
+    QWidget {
+        background-color: #FFFFFF;
+        color: #000000;
+        font-family: Verdana, Geneva, sans-serif;
+    }
+
+    QGroupBox {
+        border: 1px solid #CCCCCC;
+        border-radius: 6px;
+        margin-top: 20px;
+        padding-top: 16px;
+        background-color: #FFFFFF;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top left;
+        padding: 4px 12px;
+        margin-top: -10px;
+        color: #007EB8;
+        font-weight: bold;
+        font-size: 13pt;
+        background-color: #FFFFFF;
+    }
+
+    QLabel {
+        color: #000000;
+    }
+
+    QPushButton {
+    background-color: #007EB8;
+    color: white;
+    border: 1px solid #006699;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    /* Simulación de profundidad con degradado */
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #009EE0,
+                                stop:1 #006699);
+    }
+    QPushButton:hover {
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                    stop:0 #00BFFF,
+                                    stop:1 #0077A6);
+    }
+    QPushButton:pressed {
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                    stop:0 #005C87,
+                                    stop:1 #004D70);
+    }
+    QPushButton:disabled {
+        background-color: #CCCCCC;
+        color: #666666;
+        border: 1px solid #AAAAAA;
+    }
+
+
+    QSlider::groove:vertical {
+        width: 40px;
+        border-radius: 10px;
+        background: qlineargradient(
+            x1:0, y1:1, x2:0, y2:0,
+            stop:0 #007EB8,
+            stop:1 #E0F4FF
+        );
+    }
+    QSlider::handle:vertical {
+        background: white;
+        border: 2px solid #007EB8;
+        height: 20px;
+        margin: -2px -16px;
+        border-radius: 10px;
+    }
+
+    /* === TABLA CLARA === */
+    QTableWidget {
+        background-color: #FFFFFF;
+        alternate-background-color: #FFFFFF;
+        gridline-color: #DDDDDD;
+        color: #000000;
+        font-size: 12px;
+        selection-background-color: #E6F4FB;
+        selection-color: #000000;
+    }
+    QHeaderView::section {
+        background-color: #007EB8;
+        color: #FFFFFF;
+        font-weight: bold;
+        border: 1px solid #CCCCCC;
+        padding: 4px;
+    }
+
+    QCheckBox {
+        color: #000000;
+        font-size: 13px;
+    }
+"""
+    )
 
     window = MainWindow()
     window.show()
