@@ -9,3 +9,13 @@
 TAREAS:
 - Hacer que la grafica sea capaz de mostrar datos durante al menos 20 mins. Hasta ahora parece que cuando lleva x tiempo sustituye los priemros datos por los nuevos que entran, por lo que la grafica es finita
 - Hacer una sola pantalla donde podamos ver tanto la grafica + valores como la tabla (guardar dato + exportar a excel)
+
+- Hacer media de los datos de entrada recogidos antes de guardarlos en la tabla . que en un tiempo x (de  varios segundos) antes de guardar en la tabla, recoja varios y aque lo que guarde sea la media. si hay un dato que salte ej, siempre 50 y de repente 100 que no se tenga en cuenta
+- Mter la columna fecha + hora para poder pasarlo al excel
+- Hacer que la grafica cuando llva mucho tiempo representando datos que tenga un scroll para ver siempre la misma cantidad en tiempo de datos
+- Hacer que los datos de la practica se conecten con nuestro servidor
+- Si hay datos en la tabla, y el alumno cierra la ventana que salga un aviso para saber si esta seguro de salir
+- actualizaciones remotas por internet
+- Hacer que el programa se pueda ver en varios idiomas. meter un selector para poder el egir el idioma y meter las traducciones en un .json. por defecto idioma ingles
+- si se cierra el programa, tienen que volver todas las consignas a cero
+- mirar a ver cada cuanto tiempo el pc madna datos a l amaquina, de heat y ventilador

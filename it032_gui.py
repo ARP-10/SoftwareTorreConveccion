@@ -27,6 +27,7 @@ import time
 import pyqtgraph as pg
 import it032_core as core
 import pandas as pd
+from PyQt6.QtCore import QTimer
 
 
 # =======================================================
@@ -162,6 +163,14 @@ class MainWindow(QMainWindow):
         h_control.addLayout(v_fan)
         h_control.addLayout(v_heat)
         group_control.setLayout(h_control)
+
+        # =======================================================
+        # ⏱️ Temporizador para envío periódico de comandos
+        # =======================================================
+        self.timer_comandos = QTimer()
+        self.timer_comandos.setInterval(500)  # 500 ms
+        self.timer_comandos.timeout.connect(self.enviar_comandos_periodicos)
+        self.timer_comandos.start()
 
         # =======================================================
         # 📈 GRÁFICA
@@ -434,6 +443,14 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self, "Lectura detenida", "La lectura de datos ha sido detenida."
             )
+
+    def enviar_comandos_periodicos(self):
+        if not self.ser:
+            return  # no enviar si no hay conexión
+        fan_value = self.dial_fan.value()
+        heat_value = self.slider_heat.value()
+        core.enviar_comando(self.ser, "FAN", fan_value)
+        core.enviar_comando(self.ser, "HEAT", heat_value)
 
     def actualizar_datos(self, te, ts, tc, vel, pot):
         self.lbl_te.setText(f"Entrada (TE): {te:.2f} °C")
