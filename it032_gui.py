@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QIcon
 import sys
 import time
 import pyqtgraph as pg
@@ -55,6 +56,14 @@ class ReaderThread(QThread):
     def stop(self):
         self._running = False
 
+    if __name__ == "__main__":
+        app = QApplication(sys.argv)
+        app.setWindowIcon(
+            QIcon(
+                r"C:\Users\dikoi\Desktop\Alejandra\SoftwareTorreConveccion\fotos\dikoin_logo.jpg"
+            )
+        )
+
 
 # =======================================================
 # Ventana principal
@@ -63,6 +72,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("IT 03.2 – Convección Natural y Forzada (DIKOIN)")
+        self.setWindowIcon(
+            QIcon(
+                r"C:\Users\dikoi\Desktop\Alejandra\SoftwareTorreConveccion\fotos\dikoin_logo.jpg"
+            )
+        )
+
         self.resize(1500, 750)
 
         self.ser = None
