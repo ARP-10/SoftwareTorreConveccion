@@ -18,4 +18,3 @@ TAREAS:
 - actualizaciones remotas por internet
 - Hacer que el programa se pueda ver en varios idiomas. meter un selector para poder el egir el idioma y meter las traducciones en un .json. por defecto idioma ingles
 - si se cierra el programa, tienen que volver todas las consignas a cero
-- mirar a ver cada cuanto tiempo el pc madna datos a l amaquina, de heat y ventilador

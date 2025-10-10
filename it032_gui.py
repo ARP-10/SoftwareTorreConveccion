@@ -504,6 +504,49 @@ class MainWindow(QMainWindow):
             time.sleep(1)
         self.close()
 
+    # =======================================================
+    # CIERRE DE PROGRAMA (al pulsar la X)
+    # =======================================================
+    def closeEvent(self, event):
+        """Intercepta el cierre de la ventana principal (clic en la X)."""
+
+        # --- 1️⃣ Verificar si ventilador o calefactor NO están a cero ---
+        fan_value = self.dial_fan.value()
+        heat_value = self.slider_heat.value()
+        if fan_value > 0 or heat_value > 0:
+            QMessageBox.warning(
+                self,
+                "Advertencia de seguridad",
+                "⚠️ Antes de cerrar el programa, asegúrate de poner el ventilador y el calefactor en 0.\n\n"
+                "Por favor, reduce ambos valores a 0 antes de salir.",
+            )
+            event.ignore()
+            return
+
+        # --- 2️⃣ Verificar si hay registros sin exportar ---
+        if len(self.data_records) > 0:
+            respuesta = QMessageBox.question(
+                self,
+                "Confirmar salida",
+                "Hay datos registrados en la tabla que podrían no haberse exportado.\n\n"
+                "¿Estás seguro de que deseas salir?\n"
+                "Se perderán los datos no exportados al Excel.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if respuesta == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
+
+        # --- 3️⃣ Cerrar correctamente si pasa todas las verificaciones ---
+        if self.reader_thread:
+            self.reader_thread.stop()
+            self.reader_thread.wait()
+        if self.ser and self.ser.is_open:
+            self.ser.close()
+            time.sleep(1)
+        event.accept()
+
 
 # =======================================================
 # Ventana de resultados
