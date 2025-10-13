@@ -1,0 +1,84 @@
+{
+  "en": {
+    "title": "IT 03.2 – Natural and Forced Convection (DIKOIN)",
+    "measurements": "📊 Real-time measurements",
+    "control": "⚙️ Equipment Control",
+    "graph": "📈 Real-Time Graph",
+    "results": "📋 Practice Results",
+    "connect": "🔌 Connect",
+    "calibrate": "🧭 Calibrate",
+    "start": "▶️ Start",
+    "stop": "⏹️ Stop",
+    "save": "💾 Save Data",
+    "exit": "🚪 Exit",
+    "export": "📗 Export to Excel",
+    "fan": "Fan (FAN)",
+    "heater": "Heater (HEAT)",
+    "measure_labels": [
+      "Inlet (IT): {val:.2f} °C",
+      "Outlet (OT): {val:.2f} °C",
+      "Thermocouple (TC): {val:.2f} °C",
+      "Air velocity: {val:.2f} m/s",
+      "Power: {val:.2f} W"
+    ],
+    "table_headers": [
+      "#",
+      "Date",
+      "Time",
+      "IT (°C)",
+      "OT (°C)",
+      "TC (°C)",
+      "Vel (m/s)",
+      "Pow (W)"
+    ],
+    "graph_labels": { "x": "Time (s)", "y": "Value" },
+    "legend_labels": [
+      "Inlet (IT)",
+      "Outlet (OT)",
+      "Thermocouple (TC)",
+      "Air Velocity (m/s)",
+      "Power (W)"
+    ]
+  },
+  "es": {
+    "title": "IT 03.2 – Convección Natural y Forzada (DIKOIN)",
+    "measurements": "📊 Medidas en tiempo real",
+    "control": "⚙️ Control del equipo",
+    "graph": "📈 Gráfica en tiempo real",
+    "results": "📋 Resultados de la práctica",
+    "connect": "🔌 Conectar",
+    "calibrate": "🧭 Calibrar",
+    "start": "▶️ Iniciar",
+    "stop": "⏹️ Detener",
+    "save": "💾 Guardar dato",
+    "exit": "🚪 Salir",
+    "export": "📗 Exportar a Excel",
+    "fan": "Ventilador (FAN)",
+    "heater": "Calefactor (HEAT)",
+    "measure_labels": [
+      "Entrada (TE): {val:.2f} °C",
+      "Salida (TS): {val:.2f} °C",
+      "Termopar (TC): {val:.2f} °C",
+      "Velocidad del aire: {val:.2f} m/s",
+      "Potencia: {val:.2f} W"
+    ],
+    "table_headers": [
+      "#",
+      "Fecha",
+      "Hora",
+      "TE (°C)",
+      "TS (°C)",
+      "TC (°C)",
+      "Vel (m/s)",
+      "Pot (W)"
+    ],
+    "graph_labels": { "x": "Tiempo (s)", "y": "Valor" },
+    "legend_labels": [
+      "Entrada (TE)",
+      "Salida (TS)",
+      "Termopar (TC)",
+      "Velocidad del aire (m/s)",
+      "Potencia (W)"
+    ]
+  }
+}

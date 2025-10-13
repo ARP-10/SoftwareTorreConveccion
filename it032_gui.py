@@ -28,16 +28,18 @@ import time
 import pyqtgraph as pg
 import it032_core as core
 import pandas as pd
+import json
 
 
 # =======================================================
-# Hilo de lectura (datos del equipo)
+# Lectura de datos del equipo
 # =======================================================
 class ReaderThread(QThread):
     new_data = pyqtSignal(float, float, float, float, float)
 
     def __init__(self, ser, offsets):
         super().__init__()
+
         self.ser = ser
         self.offsets = offsets
         self._running = True
@@ -62,7 +64,13 @@ class ReaderThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("IT 03.2 – Convección Natural y Forzada (DIKOIN)")
+        # --- Cargar traducciones ---
+        with open("translations.json", "r", encoding="utf-8") as f:
+            self.translations = json.load(f)
+
+        self.current_lang = "en"  # idioma por defecto (puedes poner "es")
+
+        self.setWindowTitle("IT 03.2 - Convección Natural y Forzada (DIKOIN)")
         self.setWindowIcon(
             QIcon(
                 r"C:\Users\dikoi\Desktop\Alejandra\SoftwareTorreConveccion\fotos\dikoin_logo.jpg"
@@ -80,10 +88,11 @@ class MainWindow(QMainWindow):
         font_value = QFont("Segoe UI", 12)
 
         # =======================================================
-        # 📊 MEDIDAS EN TIEMPO REAL
+        # 📊 SECCIÓN: MEDIDAS EN TIEMPO REAL
         # =======================================================
-        group_lecturas = QGroupBox("📊 Real-time measurements")
-        group_lecturas.setFont(font_title)
+        self.group_lecturas = QGroupBox("📊 Real-time measurements")
+        self.group_lecturas.setFont(font_title)
+
         self.lbl_te = QLabel("Inlet (IT): 0.00 °C")
         self.lbl_ts = QLabel("Outlet (OT): 0.00 °C")
         self.lbl_tc = QLabel("Thermocouple (TC): 0.00 °C")
@@ -97,15 +106,15 @@ class MainWindow(QMainWindow):
         v_lecturas = QVBoxLayout()
         for lbl in [self.lbl_te, self.lbl_ts, self.lbl_tc, self.lbl_vel, self.lbl_pot]:
             v_lecturas.addWidget(lbl)
-        group_lecturas.setLayout(v_lecturas)
+        self.group_lecturas.setLayout(v_lecturas)
 
         # =======================================================
-        # ⚙️ CONTROL DEL EQUIPO
+        # ⚙️ SECCIÓN: CONTROL DEL EQUIPO
         # =======================================================
-        group_control = QGroupBox("⚙️ Equipment Control")
-        group_control.setFont(font_title)
+        self.group_control = QGroupBox("⚙️ Equipment Control")
+        self.group_control.setFont(font_title)
 
-        # Ventilador (rueda)
+        # Ventilador
         self.dial_fan = QDial()
         self.dial_fan.setRange(0, 255)
         self.dial_fan.setNotchesVisible(True)
@@ -125,7 +134,7 @@ class MainWindow(QMainWindow):
         v_fan.addWidget(self.lbl_fan)
         v_fan.addWidget(self.dial_fan, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Calefactor (slider vertical)
+        # Calefactor
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(90, 180)
@@ -166,10 +175,10 @@ class MainWindow(QMainWindow):
         h_control = QHBoxLayout()
         h_control.addLayout(v_fan)
         h_control.addLayout(v_heat)
-        group_control.setLayout(h_control)
+        self.group_control.setLayout(h_control)
 
         # =======================================================
-        # ⏱️ Temporizador para envío periódico de comandos
+        # ⏱️ Temporizador para enviar comandos periódicos
         # =======================================================
         self.timer_comandos = QTimer()
         self.timer_comandos.setInterval(500)  # 500 ms
@@ -177,10 +186,10 @@ class MainWindow(QMainWindow):
         self.timer_comandos.start()
 
         # =======================================================
-        # 📈 GRÁFICA
+        # 📈 SECCIÓN: GRÁFICA EN TIEMPO REAL
         # =======================================================
-        group_grafica = QGroupBox("📈 Real-Time Graph")
-        group_grafica.setFont(font_title)
+        self.group_grafica = QGroupBox("📈 Real-Time Graph")
+        self.group_grafica.setFont(font_title)
 
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("#FFFFFF")
@@ -248,22 +257,22 @@ class MainWindow(QMainWindow):
         # Contenedor de la leyenda (alineado arriba y ancho fijo)
         legend_widget = QWidget()
         legend_widget.setLayout(v_legend)
-        legend_widget.setFixedWidth(170)
+        legend_widget.setFixedWidth(200)
         legend_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         # === Gráfica + leyenda lado a lado ===
         h_graf = QHBoxLayout()
-        h_graf.setContentsMargins(0, 0, 0, 0)
-        h_graf.setSpacing(10)  # pequeño espacio entre gráfica y leyenda
+        h_graf.setContentsMargins(10, 0, 0, 0)
+        h_graf.setSpacing(5)  # pequeño espacio entre gráfica y leyenda
         h_graf.addWidget(self.plot_widget, stretch=1)
         h_graf.addWidget(legend_widget, alignment=Qt.AlignmentFlag.AlignTop)
-        group_grafica.setLayout(h_graf)
+        self.group_grafica.setLayout(h_graf)
 
         # =======================================================
-        # 🧮 TABLA DE RESULTADOS
+        # 🧮 TABLA DE RESULTADOS + EXPORTACIÓN
         # =======================================================
-        group_tabla = QGroupBox("📋 Practice Results")
-        group_tabla.setFont(font_title)
+        self.group_tabla = QGroupBox("📋 Practice Results")
+        self.group_tabla.setFont(font_title)
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(
@@ -316,13 +325,13 @@ class MainWindow(QMainWindow):
         )
 
         self.btn_export = QPushButton("📗 Export to Excel")
-        self.btn_export.setFixedWidth(160)
+        self.btn_export.setFixedWidth(180)
         self.btn_export.clicked.connect(self.export_excel)
 
         v_tabla = QVBoxLayout()
         v_tabla.addWidget(self.table)
         v_tabla.addWidget(self.btn_export)
-        group_tabla.setLayout(v_tabla)
+        self.group_tabla.setLayout(v_tabla)
 
         # =======================================================
         # BOTONES GENERALES
@@ -350,24 +359,34 @@ class MainWindow(QMainWindow):
         # LAYOUT GENERAL
         # =======================================================
         top_layout = QHBoxLayout()
-        top_layout.addWidget(group_lecturas, 1)
-        top_layout.addWidget(group_control, 1)
+        top_layout.addWidget(self.group_lecturas, 1)
+        top_layout.addWidget(self.group_control, 1)
 
         left_layout = QVBoxLayout()
         left_layout.addLayout(top_layout)
-        left_layout.addWidget(group_grafica)
+        left_layout.addWidget(self.group_grafica)
         left_layout.addLayout(h_botones)
 
         main_layout = QHBoxLayout()
         main_layout.addLayout(left_layout, 3)
-        main_layout.addWidget(group_tabla, 2)
+        main_layout.addWidget(self.group_tabla, 2)
 
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
+        # === Menú de idioma ===
+        menu_bar = self.menuBar()
+        menu_language = menu_bar.addMenu("🌐 Language")
+
+        action_en = menu_language.addAction("English")
+        action_es = menu_language.addAction("Español")
+
+        action_en.triggered.connect(lambda: self.set_language("en"))
+        action_es.triggered.connect(lambda: self.set_language("es"))
+
         # =======================================================
-        # EVENTOS
+        # CONEXIONES
         # =======================================================
         self.btn_conectar.clicked.connect(self.conectar)
         self.btn_calibrar.clicked.connect(self.calibrar)
@@ -387,6 +406,8 @@ class MainWindow(QMainWindow):
             self.data_pot,
         ) = ([], [], [], [], [], [])
         self.t0 = time.time()
+
+        self.set_language(self.current_lang)
 
     # =======================================================
     # FUNCIONES DE GUARDADO Y EXPORTACIÓN
@@ -555,6 +576,65 @@ class MainWindow(QMainWindow):
             return
         self.results_window = ResultsWindow(self.data_records)
         self.results_window.show()
+
+    # =======================================================
+    # CAMBIO DE IDIOMA (desde translations.json)
+    # =======================================================
+    def set_language(self, lang):
+        """Cambia todos los textos visibles de la interfaz."""
+        if lang not in self.translations:
+            print(f"⚠️ Idioma no encontrado en translations.json: {lang}")
+            return
+
+        self.current_lang = lang
+        t = self.translations[lang]
+
+        # --- Título de la ventana ---
+        self.setWindowTitle(t["title"])
+
+        # --- Títulos de los grupos ---
+        self.group_lecturas.setTitle(t["measurements"])
+        self.group_control.setTitle(t["control"])
+        self.group_grafica.setTitle(t["graph"])
+        self.group_tabla.setTitle(t["results"])
+
+        # --- Botones principales ---
+        self.btn_conectar.setText(t["connect"])
+        self.btn_calibrar.setText(t["calibrate"])
+        self.btn_iniciar.setText(t["start"])
+        self.btn_detener.setText(t["stop"])
+        self.btn_guardar.setText(t["save"])
+        self.btn_salir.setText(t["exit"])
+        self.btn_export.setText(t["export"])
+
+        # --- Fan y Heater ---
+        self.lbl_fan.setText(t["fan"].replace("{val}", "0"))
+        self.lbl_heat.setText(t["heater"].replace("{val}", "0"))
+
+        # --- Etiquetas de mediciones ---
+        measure_texts = t["measure_labels"]
+        for lbl, text in zip(
+            [self.lbl_te, self.lbl_ts, self.lbl_tc, self.lbl_vel, self.lbl_pot],
+            measure_texts,
+        ):
+            lbl.setText(text.format(val=0))
+
+        # --- Encabezados de tabla ---
+        self.table.setHorizontalHeaderLabels(t["table_headers"])
+
+        # --- Ejes de la gráfica ---
+        self.plot_widget.setLabel("left", t["graph_labels"]["y"], color="#000000")
+        self.plot_widget.setLabel("bottom", t["graph_labels"]["x"], color="#000000")
+
+        # --- Leyenda de la gráfica ---
+        legend_texts = t.get("legend_labels", [])
+        for chk, text in zip(
+            [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
+            legend_texts,
+        ):
+            chk.setText(text)
+
+        print(f"✅ Idioma cambiado a: {lang.upper()}")
 
     def cerrar_programa(self):
         if self.reader_thread:
