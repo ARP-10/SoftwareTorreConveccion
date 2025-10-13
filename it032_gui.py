@@ -82,13 +82,13 @@ class MainWindow(QMainWindow):
         # =======================================================
         # 📊 MEDIDAS EN TIEMPO REAL
         # =======================================================
-        group_lecturas = QGroupBox("📊 Medidas en tiempo real")
+        group_lecturas = QGroupBox("📊 Real-time measurements")
         group_lecturas.setFont(font_title)
-        self.lbl_te = QLabel("Entrada (TE): 0.00 °C")
-        self.lbl_ts = QLabel("Salida (TS): 0.00 °C")
-        self.lbl_tc = QLabel("Termopar (TC): 0.00 °C")
-        self.lbl_vel = QLabel("Velocidad del aire: 0.00 m/s")
-        self.lbl_pot = QLabel("Potencia: 0.00 W")
+        self.lbl_te = QLabel("Inlet (IT): 0.00 °C")
+        self.lbl_ts = QLabel("Outlet (OT): 0.00 °C")
+        self.lbl_tc = QLabel("Thermocouple (TC): 0.00 °C")
+        self.lbl_vel = QLabel("Air velocity: 0.00 m/s")
+        self.lbl_pot = QLabel("Power: 0.00 W")
 
         for lbl in [self.lbl_te, self.lbl_ts, self.lbl_tc, self.lbl_vel, self.lbl_pot]:
             lbl.setFont(font_value)
@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
         # =======================================================
         # ⚙️ CONTROL DEL EQUIPO
         # =======================================================
-        group_control = QGroupBox("⚙️ Control del equipo")
+        group_control = QGroupBox("⚙️ Equipment Control")
         group_control.setFont(font_title)
 
         # Ventilador (rueda)
@@ -111,12 +111,12 @@ class MainWindow(QMainWindow):
         self.dial_fan.setNotchesVisible(True)
         self.dial_fan.setFixedSize(180, 180)
         self.dial_fan.setWrapping(False)
-        self.lbl_fan = QLabel("Ventilador (FAN): 0 %")
+        self.lbl_fan = QLabel("Fan (FAN): 0 %")
         font_small = QFont("Verdana", 11)
         self.lbl_fan.setFont(font_small)
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dial_fan.valueChanged.connect(
-            lambda v: self.lbl_fan.setText(f"Ventilador (FAN): {int(v/2.55):3d} %")
+            lambda v: self.lbl_fan.setText(f"Fan (FAN): {int(v/2.55):3d} %")
         )
         self.dial_fan.valueChanged.connect(
             lambda v: core.enviar_comando(self.ser, "FAN", v) if self.ser else None
@@ -129,7 +129,7 @@ class MainWindow(QMainWindow):
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(90, 180)
-        self.lbl_heat = QLabel("Calefactor (HEAT): 0 %")
+        self.lbl_heat = QLabel("Heater (HEAT): 0 %")
         self.lbl_heat.setFont(font_small)
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.slider_heat.setStyleSheet(
@@ -154,7 +154,7 @@ class MainWindow(QMainWindow):
         """
         )
         self.slider_heat.valueChanged.connect(
-            lambda v: self.lbl_heat.setText(f"Calefactor (HEAT): {int(v/2.55):3d} %")
+            lambda v: self.lbl_heat.setText(f"Heater (HEAT): {int(v/2.55):3d} %")
         )
         self.slider_heat.valueChanged.connect(
             lambda v: core.enviar_comando(self.ser, "HEAT", v) if self.ser else None
@@ -179,7 +179,7 @@ class MainWindow(QMainWindow):
         # =======================================================
         # 📈 GRÁFICA
         # =======================================================
-        group_grafica = QGroupBox("📈 Gráfica en tiempo real")
+        group_grafica = QGroupBox("📈 Real-Time Graph")
         group_grafica.setFont(font_title)
 
         self.plot_widget = pg.PlotWidget()
@@ -189,21 +189,21 @@ class MainWindow(QMainWindow):
         self.plot_widget.setLabel("bottom", "Tiempo (s)", color="#000000")
 
         self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("#E74C3C", width=2), name="TE (Entrada)"
+            pen=pg.mkPen("#E74C3C", width=2), name="IT (Inlet)"
         )
         self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("#3498DB", width=2), name="TS (Salida)"
+            pen=pg.mkPen("#3498DB", width=2), name="OT (Outlet)"
         )
         self.curve_tc = self.plot_widget.plot(
-            pen=pg.mkPen("#27AE60", width=2), name="TC (Termopar)"
+            pen=pg.mkPen("#27AE60", width=2), name="TC (Thermocouple)"
         )
         self.curve_vel = self.plot_widget.plot(
             pen=pg.mkPen("#F39C12", style=Qt.PenStyle.DotLine, width=2),
-            name="Velocidad",
+            name="Air Velocity",
         )
         self.curve_pot = self.plot_widget.plot(
             pen=pg.mkPen("#8E44AD", style=Qt.PenStyle.DashLine, width=2),
-            name="Potencia",
+            name="Power",
         )
 
         # === Checkboxes con color y visibilidad ===
@@ -213,11 +213,11 @@ class MainWindow(QMainWindow):
             frame.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
             return frame
 
-        self.chk_te = QCheckBox("Entrada (TE)")
-        self.chk_ts = QCheckBox("Salida (TS)")
-        self.chk_tc = QCheckBox("Termopar (TC)")
-        self.chk_vel = QCheckBox("Velocidad (m/s)")
-        self.chk_pot = QCheckBox("Potencia (W)")
+        self.chk_te = QCheckBox("Inlet (IT)")
+        self.chk_ts = QCheckBox("Outlet (OT)")
+        self.chk_tc = QCheckBox("Thermocouple (TC)")
+        self.chk_vel = QCheckBox("Air Velocity (m/s)")
+        self.chk_pot = QCheckBox("Power (W)")
 
         for chk in [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]:
             chk.setChecked(True)
@@ -262,20 +262,20 @@ class MainWindow(QMainWindow):
         # =======================================================
         # 🧮 TABLA DE RESULTADOS
         # =======================================================
-        group_tabla = QGroupBox("📋 Resultados de la práctica")
+        group_tabla = QGroupBox("📋 Practice Results")
         group_tabla.setFont(font_title)
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(
             [
                 "#",
-                "Fecha",
-                "Hora",
-                "TE (°C)",
-                "TS (°C)",
+                "Date",
+                "Time",
+                "IT (°C)",
+                "OT (°C)",
                 "TC (°C)",
                 "Vel (m/s)",
-                "Pot (W)",
+                "Pow (W)",
             ]
         )
 
@@ -315,7 +315,7 @@ class MainWindow(QMainWindow):
         """
         )
 
-        self.btn_export = QPushButton("📗 Exportar Excel")
+        self.btn_export = QPushButton("📗 Export to Excel")
         self.btn_export.setFixedWidth(160)
         self.btn_export.clicked.connect(self.export_excel)
 
@@ -327,12 +327,12 @@ class MainWindow(QMainWindow):
         # =======================================================
         # BOTONES GENERALES
         # =======================================================
-        self.btn_conectar = QPushButton("🔌 Conectar")
-        self.btn_calibrar = QPushButton("🧭 Calibrar")
-        self.btn_iniciar = QPushButton("▶️ Iniciar")
-        self.btn_detener = QPushButton("⏹️ Detener")
-        self.btn_guardar = QPushButton("💾 Guardar dato")
-        self.btn_salir = QPushButton("🚪 Salir")
+        self.btn_conectar = QPushButton("🔌 Connect")
+        self.btn_calibrar = QPushButton("🧭 Calibrate")
+        self.btn_iniciar = QPushButton("▶️ Start")
+        self.btn_detener = QPushButton("⏹️ Stop")
+        self.btn_guardar = QPushButton("💾 Save Data")
+        self.btn_salir = QPushButton("🚪 Exit")
 
         h_botones = QHBoxLayout()
         for b in [
@@ -418,32 +418,30 @@ class MainWindow(QMainWindow):
                 self.table.setItem(i, j + 3, QTableWidgetItem(f"{val:.2f}"))
 
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"No se pudo guardar el dato: {e}")
+            QMessageBox.warning(self, "Error", f"Could not save the data: {e}")
 
     def export_excel(self):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Guardar Excel", "", "Excel Files (*.xlsx)"
+            self, "Save Excel", "", "Excel Files (*.xlsx)"
         )
         if path:
             df = pd.DataFrame(
                 self.data_records,
                 columns=[
-                    "Fecha",
-                    "Hora",
-                    "TE (°C)",
-                    "TS (°C)",
+                    "Date",
+                    "Time",
+                    "IT (°C)",
+                    "OT (°C)",
                     "TC (°C)",
                     "Vel (m/s)",
-                    "Pot (W)",
+                    "Pow (W)",
                 ],
             )
 
             df.index = df.index + 1
             df.index.name = "#"
             df.to_excel(path)
-            QMessageBox.information(
-                self, "Exportación", "Archivo Excel guardado correctamente."
-            )
+            QMessageBox.information(self, "Export", "Excel file saved successfully.")
 
     # =======================================================
     # FUNCIONES PRINCIPALES
@@ -452,30 +450,30 @@ class MainWindow(QMainWindow):
         port = core.detectar_puerto()
         if not port:
             QMessageBox.warning(
-                self, "Conexión fallida", "No se detectó el equipo por USB."
+                self, "Connection Failed", "The device was not detected via USB."
             )
             return
         self.ser = core.serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
-        QMessageBox.information(self, "Conectado", f"Equipo detectado en {port}")
+        QMessageBox.information(self, "Connected", f"Device detected on {port}")
 
     def calibrar(self):
         if not self.ser:
-            QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
+            QMessageBox.warning(self, "Error", "You must connect the device first.")
             return
         self.offsets = core.calibrar_sensores(self.ser)
         QMessageBox.information(
-            self, "Calibración", "Calibración completada correctamente."
+            self, "Calibration", "Calibration completed successfully."
         )
 
     def iniciar_lectura(self):
         if not self.ser:
-            QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
+            QMessageBox.warning(self, "Error", "You must connect the device first.")
             return
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
         QMessageBox.information(
-            self, "Lectura iniciada", "El equipo está transmitiendo datos."
+            self, "Reading Started", "The device is transmitting data."
         )
 
     def detener_lectura(self):
@@ -483,7 +481,7 @@ class MainWindow(QMainWindow):
             self.reader_thread.stop()
             self.reader_thread.wait()
             QMessageBox.information(
-                self, "Lectura detenida", "La lectura de datos ha sido detenida."
+                self, "Reading Stopped", "Data reading has been stopped."
             )
 
     def enviar_comandos_periodicos(self):
@@ -495,12 +493,39 @@ class MainWindow(QMainWindow):
         core.enviar_comando(self.ser, "HEAT", heat_value)
 
     def actualizar_datos(self, te, ts, tc, vel, pot):
-        self.lbl_te.setText(f"Entrada (TE): {te:.2f} °C")
-        self.lbl_ts.setText(f"Salida (TS): {ts:.2f} °C")
-        self.lbl_tc.setText(f"Termopar (TC): {tc:.2f} °C")
-        self.lbl_vel.setText(f"Velocidad del aire: {vel:.2f} m/s")
-        self.lbl_pot.setText(f"Potencia: {pot:.2f} W")
 
+        def es_valido(valor, lista):
+            """Devuelve True si el valor está dentro del ±15% de la media"""
+            if len(lista) < 5:  # aún pocos datos, no filtrar
+                return True
+            media = sum(lista) / len(lista)
+            if media == 0:
+                return True
+            desviacion = abs(valor - media) / abs(media)
+            return desviacion <= 0.15  # ✅ dentro del ±15 %
+
+        # Comprobar cada variable
+        if not all(
+            [
+                es_valido(te, self.data_te),
+                es_valido(ts, self.data_ts),
+                es_valido(tc, self.data_tc),
+                es_valido(vel, self.data_vel),
+                es_valido(pot, self.data_pot),
+            ]
+        ):
+            # 🚫 Si alguna lectura es un despunte, se ignora totalmente
+            print("⚠️ Despunte detectado, valor descartado.")
+            return
+
+        # --- Actualizar etiquetas ---
+        self.lbl_te.setText(f"Inlet Temperature (IT): {te:.2f} °C")
+        self.lbl_ts.setText(f"Outlet Temperature (OT): {ts:.2f} °C")
+        self.lbl_tc.setText(f"Thermocouple (TC): {tc:.2f} °C")
+        self.lbl_vel.setText(f"Air Velocity: {vel:.2f} m/s")
+        self.lbl_pot.setText(f"Power: {pot:.2f} W")
+
+        # --- Añadir a las listas y graficar ---
         t = time.time() - self.t0
         self.data_x.append(t)
         self.data_te.append(te)
@@ -508,12 +533,6 @@ class MainWindow(QMainWindow):
         self.data_tc.append(tc)
         self.data_vel.append(vel)
         self.data_pot.append(pot)
-
-        # Evita que la memoria se sature (limitado a 200 puntos)
-        # if len(self.data_x) > 200:
-        #     self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot = [
-        #         lst[-200:] for lst in [self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot]
-        #     ]
 
         self.curve_te.setData(self.data_x, self.data_te)
         self.curve_ts.setData(self.data_x, self.data_ts)
@@ -531,7 +550,7 @@ class MainWindow(QMainWindow):
     def mostrar_resultados(self):
         if not self.data_records:
             QMessageBox.warning(
-                self, "Sin datos", "No hay datos guardados para mostrar."
+                self, "No Data", "There are no saved records to display."
             )
             return
         self.results_window = ResultsWindow(self.data_records)
@@ -558,10 +577,11 @@ class MainWindow(QMainWindow):
         if fan_value > 0 or heat_value > 0:
             QMessageBox.warning(
                 self,
-                "Advertencia de seguridad",
-                "⚠️ Antes de cerrar el programa, asegúrate de poner el ventilador y el calefactor en 0.\n\n"
-                "Por favor, reduce ambos valores a 0 antes de salir.",
+                "Safety Warning",
+                "⚠️ Before closing the program, make sure to set both the fan and the heater to 0.\n\n"
+                "Please reduce both values to 0 before exiting.",
             )
+
             event.ignore()
             return
 
@@ -569,13 +589,14 @@ class MainWindow(QMainWindow):
         if len(self.data_records) > 0:
             respuesta = QMessageBox.question(
                 self,
-                "Confirmar salida",
-                "Hay datos registrados en la tabla que podrían no haberse exportado.\n\n"
-                "¿Estás seguro de que deseas salir?\n"
-                "Se perderán los datos no exportados al Excel.",
+                "Confirm Exit",
+                "There are records in the table that may not have been exported.\n\n"
+                "Are you sure you want to exit?\n"
+                "Any data not exported to Excel will be lost.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
+
             if respuesta == QMessageBox.StandardButton.No:
                 event.ignore()
                 return
@@ -596,7 +617,7 @@ class MainWindow(QMainWindow):
 class ResultsWindow(QWidget):
     def __init__(self, data_records):
         super().__init__()
-        self.setWindowTitle("📊 Resultados de la práctica")
+        self.setWindowTitle("📊 Practice Results")
         self.resize(900, 600)
         self.data_records = data_records
 
@@ -606,13 +627,13 @@ class ResultsWindow(QWidget):
         self.table.setHorizontalHeaderLabels(
             [
                 "#",
-                "Fecha",
-                "Hora",
-                "TE (°C)",
-                "TS (°C)",
+                "Date",
+                "Time",
+                "IT (°C)",
+                "OT (°C)",
                 "TC (°C)",
                 "Vel (m/s)",
-                "Pot (W)",
+                "Pow (W)",
             ]
         )
 
@@ -657,8 +678,8 @@ class ResultsWindow(QWidget):
         header.setStretchLastSection(False)
 
         # --- Botones ---
-        btn_export_xlsx = QPushButton("📗 Exportar Excel")
-        btn_close = QPushButton("🚪 Cerrar")
+        btn_export_xlsx = QPushButton("📗 Export to Excel")
+        btn_close = QPushButton("🚪 Exit")
 
         btn_export_xlsx.setFixedWidth(150)
         btn_close.setFixedWidth(150)
@@ -699,28 +720,26 @@ class ResultsWindow(QWidget):
     def export_excel(self):
         """Exporta los datos a Excel (.xlsx) incluyendo numeración"""
         path, _ = QFileDialog.getSaveFileName(
-            self, "Guardar Excel", "", "Excel Files (*.xlsx)"
+            self, "Save Excel", "", "Excel Files (*.xlsx)"
         )
         if path:
             df = pd.DataFrame(
                 self.data_records,
                 columns=[
-                    "Fecha",
-                    "Hora",
-                    "TE (°C)",
-                    "TS (°C)",
+                    "Date",
+                    "Time",
+                    "IT (°C)",
+                    "OT (°C)",
                     "TC (°C)",
-                    "Vel (m/s)",
-                    "Pot (W)",
+                    "Velocity (m/s)",
+                    "Power (W)",
                 ],
             )
 
             df.index = df.index + 1  # numeración desde 1
             df.index.name = "#"
             df.to_excel(path)
-            QMessageBox.information(
-                self, "Exportación", "Archivo Excel guardado correctamente."
-            )
+            QMessageBox.information(self, "Export", "Excel file saved successfully.")
 
 
 # =======================================================
