@@ -393,7 +393,6 @@ class MainWindow(QMainWindow):
         self.btn_iniciar.clicked.connect(self.iniciar_lectura)
         self.btn_detener.clicked.connect(self.detener_lectura)
         self.btn_guardar.clicked.connect(self.guardar_dato)
-        self.btn_export.clicked.connect(self.export_excel)
         self.btn_salir.clicked.connect(self.cerrar_programa)
 
         # Variables de datos
