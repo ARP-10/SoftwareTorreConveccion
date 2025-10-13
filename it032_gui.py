@@ -19,16 +19,15 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFrame,
     QHeaderView,
+    QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt6.QtGui import QFont, QIcon
 import sys
 import time
 import pyqtgraph as pg
 import it032_core as core
 import pandas as pd
-from PyQt6.QtCore import QTimer
 
 
 # =======================================================
@@ -55,14 +54,6 @@ class ReaderThread(QThread):
 
     def stop(self):
         self._running = False
-
-    if __name__ == "__main__":
-        app = QApplication(sys.argv)
-        app.setWindowIcon(
-            QIcon(
-                r"C:\Users\dikoi\Desktop\Alejandra\SoftwareTorreConveccion\fotos\dikoin_logo.jpg"
-            )
-        )
 
 
 # =======================================================
@@ -139,9 +130,7 @@ class MainWindow(QMainWindow):
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(90, 180)
         self.lbl_heat = QLabel("Calefactor (HEAT): 0 %")
-        font_small = QFont("Verdana", 11)
         self.lbl_heat.setFont(font_small)
-
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.slider_heat.setStyleSheet(
             """
@@ -194,39 +183,33 @@ class MainWindow(QMainWindow):
         group_grafica.setFont(font_title)
 
         self.plot_widget = pg.PlotWidget()
-        # === Apariencia clara para la gráfica ===
         self.plot_widget.setBackground("#FFFFFF")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.plot_widget.setLabel("left", "Valor", color="#000000")
         self.plot_widget.setLabel("bottom", "Tiempo (s)", color="#000000")
 
-        # Actualiza los colores de las curvas
         self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("#E74C3C", width=2), name="TE (Entrada)"  # rojo vivo
+            pen=pg.mkPen("#E74C3C", width=2), name="TE (Entrada)"
         )
         self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("#3498DB", width=2), name="TS (Salida)"  # azul medio
+            pen=pg.mkPen("#3498DB", width=2), name="TS (Salida)"
         )
         self.curve_tc = self.plot_widget.plot(
-            pen=pg.mkPen("#27AE60", width=2), name="TC (Termopar)"  # verde intenso
+            pen=pg.mkPen("#27AE60", width=2), name="TC (Termopar)"
         )
         self.curve_vel = self.plot_widget.plot(
-            pen=pg.mkPen(
-                "#F39C12", style=Qt.PenStyle.DotLine, width=2
-            ),  # naranja punteado
+            pen=pg.mkPen("#F39C12", style=Qt.PenStyle.DotLine, width=2),
             name="Velocidad",
         )
         self.curve_pot = self.plot_widget.plot(
-            pen=pg.mkPen(
-                "#8E44AD", style=Qt.PenStyle.DashLine, width=2
-            ),  # violeta discontinuo
+            pen=pg.mkPen("#8E44AD", style=Qt.PenStyle.DashLine, width=2),
             name="Potencia",
         )
 
-        # Checkboxes con color
+        # === Checkboxes con color y visibilidad ===
         def color_box(color):
             frame = QFrame()
-            frame.setFixedSize(16, 16)
+            frame.setFixedSize(14, 14)
             frame.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
             return frame
 
@@ -246,24 +229,34 @@ class MainWindow(QMainWindow):
         self.chk_vel.stateChanged.connect(self.toggle_curve_visibility)
         self.chk_pot.stateChanged.connect(self.toggle_curve_visibility)
 
-        # Leyenda lateral a la derecha
+        # === Leyenda lateral compacta ===
         v_legend = QVBoxLayout()
+        v_legend.setSpacing(2)  # menos espacio vertical entre filas
+        v_legend.setContentsMargins(0, 0, 0, 0)
+
         for color, chk in zip(
             ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
             [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
         ):
             row = QHBoxLayout()
+            row.setSpacing(3)  # menos separación horizontal entre color y texto
+            row.setContentsMargins(0, 0, 0, 0)
             row.addWidget(color_box(color))
-            row.addSpacing(6)
             row.addWidget(chk)
-            row.addStretch()
             v_legend.addLayout(row)
-        v_legend.addStretch()
 
-        # Gráfica + leyenda lado a lado
+        # Contenedor de la leyenda (alineado arriba y ancho fijo)
+        legend_widget = QWidget()
+        legend_widget.setLayout(v_legend)
+        legend_widget.setFixedWidth(170)
+        legend_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        # === Gráfica + leyenda lado a lado ===
         h_graf = QHBoxLayout()
-        h_graf.addWidget(self.plot_widget, stretch=4)
-        h_graf.addLayout(v_legend, stretch=1)
+        h_graf.setContentsMargins(0, 0, 0, 0)
+        h_graf.setSpacing(10)  # pequeño espacio entre gráfica y leyenda
+        h_graf.addWidget(self.plot_widget, stretch=1)
+        h_graf.addWidget(legend_widget, alignment=Qt.AlignmentFlag.AlignTop)
         group_grafica.setLayout(h_graf)
 
         # =======================================================
@@ -272,13 +265,35 @@ class MainWindow(QMainWindow):
         group_tabla = QGroupBox("📋 Resultados de la práctica")
         group_tabla.setFont(font_title)
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(
-            ["#", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"]
+            [
+                "#",
+                "Fecha",
+                "Hora",
+                "TE (°C)",
+                "TS (°C)",
+                "TC (°C)",
+                "Vel (m/s)",
+                "Pot (W)",
+            ]
         )
+
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+
+        # 🔹 Forzar columna # más estrecha
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(0, 25)
+        header.setMinimumSectionSize(10)
+        header.setStretchLastSection(False)
+
+        # 🔹 Resto de columnas elásticas
+        for i in range(1, self.table.columnCount()):
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        # 💄 Estilo visual claro para la tabla
         self.table.setStyleSheet(
             """
             QTableWidget {
@@ -299,11 +314,6 @@ class MainWindow(QMainWindow):
             }
         """
         )
-
-        header = self.table.horizontalHeader()
-        from PyQt6.QtWidgets import QHeaderView
-
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         self.btn_export = QPushButton("📗 Exportar Excel")
         self.btn_export.setFixedWidth(160)
@@ -339,19 +349,15 @@ class MainWindow(QMainWindow):
         # =======================================================
         # LAYOUT GENERAL
         # =======================================================
-
-        # Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
         top_layout.addWidget(group_lecturas, 1)
         top_layout.addWidget(group_control, 1)
 
-        # Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
-        left_layout.addLayout(top_layout)  # lecturas + control lado a lado
-        left_layout.addWidget(group_grafica)  # debajo la gráfica
-        left_layout.addLayout(h_botones)  # botones al final
+        left_layout.addLayout(top_layout)
+        left_layout.addWidget(group_grafica)
+        left_layout.addLayout(h_botones)
 
-        # Layout principal: izquierda (funcional) + derecha (tabla)
         main_layout = QHBoxLayout()
         main_layout.addLayout(left_layout, 3)
         main_layout.addWidget(group_tabla, 2)
@@ -387,18 +393,30 @@ class MainWindow(QMainWindow):
     # =======================================================
     def guardar_dato(self):
         try:
+            from datetime import datetime
+
+            now = datetime.now()
+            fecha = now.strftime("%d/%m/%Y")
+            hora = now.strftime("%H:%M:%S")
+
             te = float(self.lbl_te.text().split(":")[1].replace("°C", "").strip())
             ts = float(self.lbl_ts.text().split(":")[1].replace("°C", "").strip())
             tc = float(self.lbl_tc.text().split(":")[1].replace("°C", "").strip())
             vel = float(self.lbl_vel.text().split(":")[1].replace("m/s", "").strip())
             pot = float(self.lbl_pot.text().split(":")[1].replace("W", "").strip())
 
-            self.data_records.append([te, ts, tc, vel, pot])
+            # Guardar también fecha y hora en data_records
+            self.data_records.append([fecha, hora, te, ts, tc, vel, pot])
+
+            # Actualizar tabla en pantalla
             self.table.setRowCount(len(self.data_records))
             i = len(self.data_records) - 1
             self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
+            self.table.setItem(i, 1, QTableWidgetItem(fecha))
+            self.table.setItem(i, 2, QTableWidgetItem(hora))
             for j, val in enumerate([te, ts, tc, vel, pot]):
-                self.table.setItem(i, j + 1, QTableWidgetItem(f"{val:.2f}"))
+                self.table.setItem(i, j + 3, QTableWidgetItem(f"{val:.2f}"))
+
         except Exception as e:
             QMessageBox.warning(self, "Error", f"No se pudo guardar el dato: {e}")
 
@@ -409,8 +427,17 @@ class MainWindow(QMainWindow):
         if path:
             df = pd.DataFrame(
                 self.data_records,
-                columns=["TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"],
+                columns=[
+                    "Fecha",
+                    "Hora",
+                    "TE (°C)",
+                    "TS (°C)",
+                    "TC (°C)",
+                    "Vel (m/s)",
+                    "Pot (W)",
+                ],
             )
+
             df.index = df.index + 1
             df.index.name = "#"
             df.to_excel(path)
@@ -575,10 +602,30 @@ class ResultsWindow(QWidget):
 
         # --- Tabla de datos ---
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(
-            ["#", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"]
+            [
+                "#",
+                "Fecha",
+                "Hora",
+                "TE (°C)",
+                "TS (°C)",
+                "TC (°C)",
+                "Vel (m/s)",
+                "Pot (W)",
+            ]
         )
+
+        header = self.table.horizontalHeader()
+
+        # Permitir tamaños por columna
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+
+        # Columna # fija y estrecha
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(0, 40)  # o 36, como prefieras
+        header.setMinimumSectionSize(20)  # permite columnas pequeñas
+
         self.update_table()
 
         # 💄 Estilo visual mejorado
@@ -608,7 +655,6 @@ class ResultsWindow(QWidget):
         # --- Ajuste del ancho de columnas ---
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         # --- Botones ---
         btn_export_xlsx = QPushButton("📗 Exportar Excel")
@@ -642,7 +688,11 @@ class ResultsWindow(QWidget):
 
             # Resto de columnas
             for j, val in enumerate(record):
-                item = QTableWidgetItem(f"{val:.2f}")
+                if isinstance(val, (int, float)):
+                    text = f"{val:.2f}"
+                else:
+                    text = str(val)
+                item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setItem(i, j + 1, item)
 
@@ -654,8 +704,17 @@ class ResultsWindow(QWidget):
         if path:
             df = pd.DataFrame(
                 self.data_records,
-                columns=["TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"],
+                columns=[
+                    "Fecha",
+                    "Hora",
+                    "TE (°C)",
+                    "TS (°C)",
+                    "TC (°C)",
+                    "Vel (m/s)",
+                    "Pot (W)",
+                ],
             )
+
             df.index = df.index + 1  # numeración desde 1
             df.index.name = "#"
             df.to_excel(path)
