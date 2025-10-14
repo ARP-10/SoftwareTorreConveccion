@@ -12,8 +12,21 @@ TAREAS:
 - Actualizaciones remotas por internet. Hacer que se descargue un archivo que este en el servidor? Meter número de version del sw
 - Hacer que el dato del ventilador y el calefactor se envie cada 500 milisegundos al microcontrolador
 - Ahora cada dato lo vamos a recibir con su tipo desde el microcontrolador (hacer que se identifique cada uno y se coloque donde corresponda el programa), hacer que en caso de que llegue alguno otro, la tabla sea ampliable facil
-- 
+- Falta traducir los pop-ups de "conectado", "transmitiendo datos", etc. 
 
 
 IMPORTANTE ANTES DE CONVERTIR A .EXE
 - Usae este comando para hacer que el logo se quede bien guardado (antes habra que convertir a .ico el icono): pyinstaller --onefile --windowed --icon="fotos\dikoin_logo.ico" it032_gui.py
+
+
+API 
+- Meter el json con las traducciones
+- El valor apra identificar quien hace la práctica será el número de serie
+/api/translations
+/api/practices
+
+Tabla machines:
+    id, serial_number, model
+
+Tabla practices: 
+    Campos: id, machine_id (fk), date, time, te (temp de entrada), ts (temp de salida), tp (termopar), vel, pot, created_at(timestamp)
