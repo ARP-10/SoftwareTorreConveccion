@@ -192,6 +192,13 @@ class MainWindow(QMainWindow):
         self.group_grafica.setFont(font_title)
 
         self.plot_widget = pg.PlotWidget()
+
+        # Permitir desplazamiento y zoom manual
+        self.plot_widget.setMouseEnabled(x=True, y=False)
+        self.plot_widget.setMenuEnabled(False)
+        self.plot_widget.getViewBox().setMouseMode(pg.ViewBox.RectMode)
+
+
         self.plot_widget.setBackground("#FFFFFF")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.plot_widget.setLabel("left", "Valor", color="#000000")
@@ -553,6 +560,13 @@ class MainWindow(QMainWindow):
         self.data_tc.append(tc)
         self.data_vel.append(vel)
         self.data_pot.append(pot)
+
+        # --- Mostrar sólo los últimos N segundos ---
+        window = 60  # segundos visibles
+        if t > window:
+            vb = self.plot_widget.getViewBox()
+            if not vb.state['mouseEnabled'][0]:  
+                vb.setXRange(t - window, t, padding=0)
 
         self.curve_te.setData(self.data_x, self.data_te)
         self.curve_ts.setData(self.data_x, self.data_ts)

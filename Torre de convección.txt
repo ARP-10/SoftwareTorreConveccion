@@ -7,12 +7,9 @@
 - Al devolver, tengo que enviar un comando (readstringuntil)
 
 TAREAS:
-- Hacer media de los datos de entrada recogidos antes de guardarlos en la tabla . que en un tiempo x (de  varios segundos) antes de guardar en la tabla, recoja varios y aque lo que guarde sea la media. si hay un dato que salte ej, siempre 50 y de repente 100 que no se tenga en cuenta
 - Hacer que la grafica cuando llva mucho tiempo representando datos que tenga un scroll para ver siempre la misma cantidad en tiempo de datos
 - Hacer que los datos de la practica se conecten con nuestro servidor
 - actualizaciones remotas por internet
-- Hacer que el programa se pueda ver en varios idiomas. meter un selector para poder el egir el idioma y meter las traducciones en un .json. por defecto idioma ingles
-- Cuando le das a exportar a excel parece que la accion se envia dos veces
 
 IMPORTANTE ANTES DE CONVERTIR A .EXE
 - Usae este comando para hacer que el logo se quede bien guardado (antes habra que convertir a .ico el icono): pyinstaller --onefile --windowed --icon="fotos\dikoin_logo.ico" it032_gui.py
