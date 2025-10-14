@@ -10,6 +10,7 @@ TAREAS:
 - Hacer que la grafica cuando llva mucho tiempo representando datos que tenga un scroll para ver siempre la misma cantidad en tiempo de datos
 - Hacer que los datos de la practica se conecten con nuestro servidor
 - actualizaciones remotas por internet
+- Hacer que el dato del ventilador y el calefactor se envie cada 500 milisegundos al microcontrolador
 
 IMPORTANTE ANTES DE CONVERTIR A .EXE
 - Usae este comando para hacer que el logo se quede bien guardado (antes habra que convertir a .ico el icono): pyinstaller --onefile --windowed --icon="fotos\dikoin_logo.ico" it032_gui.py
