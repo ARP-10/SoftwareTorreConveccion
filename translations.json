@@ -49,7 +49,17 @@
       "reading_started": "El equipo está transmitiendo datos.",
       "reading_stopped": "La lectura de datos ha sido detenida.",
       "export_ok": "Archivo Excel guardado correctamente."
+    },
+    "dialogs_close": {
+      "yes": "Si",
+      "no": "No",
+      "safety_title": "Advertencia de seguridad",
+      "safety_message": "⚠️ Antes de cerrar el programa, asegúrate de poner el ventilador y el calefactor en 0.\n\nPor favor, reduce ambos valores a 0 antes de salir.",
+      "confirm_title": "Confirmar salida",
+      "confirm_message": "Hay datos registrados en la tabla que podrían no haberse exportado.\n\n¿Estás seguro de que deseas salir?\nSe perderán los datos no exportados al Excel."
     }
+
+
   },
   "en": {
     "title": "IT 03.2 - Natural and Forced Convection (DIKOIN)",
@@ -101,6 +111,16 @@
       "reading_started": "The device is transmitting data.",
       "reading_stopped": "Data reading has been stopped.",
       "export_ok": "Excel file saved successfully."
+    },
+    "dialogs_close": {
+      "yes": "Yes",
+      "no": "No",
+      "safety_title": "Safety warning",
+      "safety_message": "⚠️ Before closing the program, make sure to set the fan and heater to 0.\n\nPlease reduce both values to 0 before exiting.",
+      "confirm_title": "Confirm exit",
+      "confirm_message": "There are data records in the table that might not have been exported.\n\nAre you sure you want to exit?\nUnsaved data will be lost."
     }
+
+
   }
 }

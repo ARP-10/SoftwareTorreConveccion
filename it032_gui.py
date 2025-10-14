@@ -673,33 +673,31 @@ class MainWindow(QMainWindow):
     # CIERRE DE PROGRAMA (al pulsar la X)
     # =======================================================
     def closeEvent(self, event):
-        """Intercepta el cierre de la ventana principal (clic en la X)."""
+        t = self.translations[self.current_lang]["dialogs_close"]
 
         # --- 1️⃣ Verificar si ventilador o calefactor NO están a cero ---
         fan_value = self.dial_fan.value()
         heat_value = self.slider_heat.value()
         if fan_value > 0 or heat_value > 0:
-            QMessageBox.warning(
-                self,
-                "Advertencia de seguridad",
-                "⚠️ Antes de cerrar el programa, asegúrate de poner el ventilador y el calefactor en 0.\n\n"
-                "Por favor, reduce ambos valores a 0 antes de salir.",
-            )
+            QMessageBox.warning(self, t["safety_title"], t["safety_message"])
             event.ignore()
             return
 
         # --- 2️⃣ Verificar si hay registros sin exportar ---
         if len(self.data_records) > 0:
-            respuesta = QMessageBox.question(
-                self,
-                "Confirmar salida",
-                "Hay datos registrados en la tabla que podrían no haberse exportado.\n\n"
-                "¿Estás seguro de que deseas salir?\n"
-                "Se perderán los datos no exportados al Excel.",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if respuesta == QMessageBox.StandardButton.No:
+            msg = QMessageBox(self)
+            msg.setWindowTitle(t["confirm_title"])
+            msg.setText(t["confirm_message"])
+            msg.setIcon(QMessageBox.Icon.Question)
+
+            # Crear botones personalizados
+            btn_yes = msg.addButton(t["yes"], QMessageBox.ButtonRole.YesRole)
+            btn_no = msg.addButton(t["no"], QMessageBox.ButtonRole.NoRole)
+
+            msg.setDefaultButton(btn_no)
+            msg.exec()
+
+            if msg.clickedButton() == btn_no:
                 event.ignore()
                 return
 
