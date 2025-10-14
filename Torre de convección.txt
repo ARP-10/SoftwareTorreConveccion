@@ -7,10 +7,13 @@
 - Al devolver, tengo que enviar un comando (readstringuntil)
 
 TAREAS:
-- Hacer que la grafica cuando llva mucho tiempo representando datos que tenga un scroll para ver siempre la misma cantidad en tiempo de datos
-- Hacer que los datos de la practica se conecten con nuestro servidor
-- actualizaciones remotas por internet
+- Hacer que la grafica cuando lleva mucho tiempo representando datos que tenga un scroll para ver siempre la misma cantidad en tiempo de datos
+- Hacer que los datos de la practica se conecten con nuestro servidor (api laravel)
+- Actualizaciones remotas por internet. Hacer que se descargue un archivo que este en el servidor? Meter número de version del sw
 - Hacer que el dato del ventilador y el calefactor se envie cada 500 milisegundos al microcontrolador
+- Ahora cada dato lo vamos a recibir con su tipo desde el microcontrolador (hacer que se identifique cada uno y se coloque donde corresponda el programa), hacer que en caso de que llegue alguno otro, la tabla sea ampliable facil
+- 
+
 
 IMPORTANTE ANTES DE CONVERTIR A .EXE
 - Usae este comando para hacer que el logo se quede bien guardado (antes habra que convertir a .ico el icono): pyinstaller --onefile --windowed --icon="fotos\dikoin_logo.ico" it032_gui.py

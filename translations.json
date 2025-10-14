@@ -1,67 +1,19 @@
 {
-  "en": {
-    "title": "IT 03.2 – Natural and Forced Convection (DIKOIN)",
-    "measurements": "📊 Real-time measurements",
-    "control": "⚙️ Equipment Control",
-    "graph": "📈 Real-Time Graph",
-    "results": "📋 Practice Results",
-    "connect": "🔌 Connect",
-    "calibrate": "🧭 Calibrate",
-    "start": "▶️ Start",
-    "stop": "⏹️ Stop",
-    "save": "💾 Save Data",
-    "exit": "🚪 Exit",
-    "export": "📗 Export to Excel",
-    "fan": "Fan (FAN)",
-    "heater": "Heater (HEAT)",
-    "measure_labels": [
-      "Inlet (IT): {val:.2f} °C",
-      "Outlet (OT): {val:.2f} °C",
-      "Thermocouple (TC): {val:.2f} °C",
-      "Air velocity: {val:.2f} m/s",
-      "Power: {val:.2f} W"
-    ],
-    "table_headers": [
-      "#",
-      "Date",
-      "Time",
-      "IT (°C)",
-      "OT (°C)",
-      "TC (°C)",
-      "Vel (m/s)",
-      "Pow (W)"
-    ],
-    "graph_labels": { "x": "Time (s)", "y": "Value" },
-    "legend_labels": [
-      "Inlet (IT)",
-      "Outlet (OT)",
-      "Thermocouple (TC)",
-      "Air Velocity (m/s)",
-      "Power (W)"
-    ]
-  },
   "es": {
-    "title": "IT 03.2 – Convección Natural y Forzada (DIKOIN)",
+    "title": "IT 03.2 - Convección Natural y Forzada (DIKOIN)",
     "measurements": "📊 Medidas en tiempo real",
     "control": "⚙️ Control del equipo",
     "graph": "📈 Gráfica en tiempo real",
     "results": "📋 Resultados de la práctica",
-    "connect": "🔌 Conectar",
-    "calibrate": "🧭 Calibrar",
-    "start": "▶️ Iniciar",
-    "stop": "⏹️ Detener",
-    "save": "💾 Guardar dato",
-    "exit": "🚪 Salir",
-    "export": "📗 Exportar a Excel",
-    "fan": "Ventilador (FAN)",
-    "heater": "Calefactor (HEAT)",
-    "measure_labels": [
-      "Entrada (TE): {val:.2f} °C",
-      "Salida (TS): {val:.2f} °C",
-      "Termopar (TC): {val:.2f} °C",
-      "Velocidad del aire: {val:.2f} m/s",
-      "Potencia: {val:.2f} W"
-    ],
+    "labels": {
+      "te": "Entrada (TE): {val:.2f} °C",
+      "ts": "Salida (TS): {val:.2f} °C",
+      "tc": "Termopar (TP): {val:.2f} °C",
+      "vel": "Velocidad del aire: {val:.2f} m/s",
+      "pot": "Potencia: {val:.2f} W"
+    },
+    "fan": "Ventilador (FAN): {val} %",
+    "heater": "Calefactor (HEAT): {val} %",
     "table_headers": [
       "#",
       "Fecha",
@@ -72,13 +24,83 @@
       "Vel (m/s)",
       "Pot (W)"
     ],
-    "graph_labels": { "x": "Tiempo (s)", "y": "Valor" },
+    "connect": "🔌 Conectar",
+    "calibrate": "🧭 Calibrar",
+    "start": "▶️ Iniciar",
+    "stop": "⏹️ Detener",
+    "save": "💾 Guardar dato",
+    "exit": "🚪 Salir",
+    "export": "📗 Exportar Excel",
     "legend_labels": [
       "Entrada (TE)",
       "Salida (TS)",
-      "Termopar (TC)",
-      "Velocidad del aire (m/s)",
+      "Termopar (TP)",
+      "Velocidad (m/s)",
       "Potencia (W)"
-    ]
+    ],
+    "graph_labels": {
+      "x": "Tiempo (s)",
+      "y": "Valor"
+    },
+    "messages": {
+      "connection_failed": "No se detectó el equipo por USB.",
+      "connected": "Equipo detectado en {port}",
+      "calibration_done": "Calibración completada correctamente.",
+      "reading_started": "El equipo está transmitiendo datos.",
+      "reading_stopped": "La lectura de datos ha sido detenida.",
+      "export_ok": "Archivo Excel guardado correctamente."
+    }
+  },
+  "en": {
+    "title": "IT 03.2 - Natural and Forced Convection (DIKOIN)",
+    "measurements": "📊 Real-time measurements",
+    "control": "⚙️ Equipment Control",
+    "graph": "📈 Real-Time Graph",
+    "results": "📋 Practice Results",
+    "labels": {
+      "te": "Inlet (TI): {val:.2f} °C",
+      "ts": "Outlet (TO): {val:.2f} °C",
+      "tc": "Thermocouple (TC): {val:.2f} °C",
+      "vel": "Air Velocity: {val:.2f} m/s",
+      "pot": "Power: {val:.2f} W"
+    },
+    "fan": "Fan (FAN): {val} %",
+    "heater": "Heater (HEAT): {val} %",
+    "table_headers": [
+      "#",
+      "Date",
+      "Time",
+      "TI (°C)",
+      "TO (°C)",
+      "TC (°C)",
+      "Vel (m/s)",
+      "Pot (W)"
+    ],
+    "connect": "🔌 Connect",
+    "calibrate": "🧭 Calibrate",
+    "start": "▶️ Start",
+    "stop": "⏹️ Stop",
+    "save": "💾 Save Data",
+    "exit": "🚪 Exit",
+    "export": "📗 Export to Excel",
+    "legend_labels": [
+      "Inlet (TI)",
+      "Outlet (TO)",
+      "Thermocouple (TC)",
+      "Air Velocity (m/s)",
+      "Power (W)"
+    ],
+    "graph_labels": {
+      "x": "Time (s)",
+      "y": "Value"
+    },
+    "messages": {
+      "connection_failed": "The device was not detected via USB.",
+      "connected": "Device detected on {port}",
+      "calibration_done": "Calibration completed successfully.",
+      "reading_started": "The device is transmitting data.",
+      "reading_stopped": "Data reading has been stopped.",
+      "export_ok": "Excel file saved successfully."
+    }
   }
 }
