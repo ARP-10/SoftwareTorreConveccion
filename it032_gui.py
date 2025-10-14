@@ -224,10 +224,26 @@ class MainWindow(QMainWindow):
         )
 
         # === Checkboxes con color y textos desde el JSON ===
-        def color_box(color):
+        def color_box(color, line_style="solid"):
             frame = QFrame()
-            frame.setFixedSize(14, 14)
-            frame.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
+            frame.setFixedSize(30, 10)
+
+            if line_style == "dot":
+                border_style = "dotted"
+            elif line_style == "dash":
+                border_style = "dashed"
+            else:
+                border_style = "solid"
+
+            frame.setStyleSheet(
+                f"""
+                QFrame {{
+                    background-color: transparent;
+                    border: 2px {border_style} {color};
+                    border-radius: 2px;
+                }}
+                """
+            )
             return frame
 
         # Los nombres vienen de las etiquetas de leyenda
@@ -255,18 +271,18 @@ class MainWindow(QMainWindow):
         v_legend.setSpacing(2)
         v_legend.setContentsMargins(0, 0, 0, 0)
 
-        for color, chk in zip(
+        for color, style, chk in zip(
             ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
+            ["solid", "solid", "solid", "dot", "dash"],
             [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
         ):
             row = QHBoxLayout()
-            row.setSpacing(3)
+            row.setSpacing(5)
             row.setContentsMargins(0, 0, 0, 0)
-            row.addWidget(color_box(color))
-            row.addSpacing(6)
+            row.addWidget(color_box(color, style))
             row.addWidget(chk)
-            row.addStretch()
             v_legend.addLayout(row)
+
         v_legend.addStretch()
 
         # Leyenda
@@ -703,7 +719,7 @@ class MainWindow(QMainWindow):
 class ResultsWindow(QWidget):
     def __init__(self, data_records):
         super().__init__()
-        self.setWindowTitle("📊 Resultados de la práctica")
+        self.setWindowTitle(t[results])
         self.resize(900, 600)
         self.data_records = data_records
 
@@ -840,9 +856,16 @@ if __name__ == "__main__":
     app.setStyleSheet(
         """
     QWidget {
-        background-color: #FFFFFF;
         color: #000000;
         font-family: Verdana, Geneva, sans-serif;
+    }
+
+    QCheckBox,
+    QRadioButton,
+    QLineEdit,
+    QComboBox,
+    QPushButton {
+        background: none;
     }
 
     QGroupBox {
@@ -934,8 +957,11 @@ if __name__ == "__main__":
 
     QCheckBox {
         color: #000000;
-        font-size: 13px;
+        font-size: 20px;
+        spacing: 6px;
     }
+
+
 
         /* === SCROLLBAR PERSONALIZADO === */
     QScrollBar:vertical {
