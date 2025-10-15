@@ -4,7 +4,7 @@
 
 /* === FONDO GENERAL === */
 QWidget {
-    background-color: #F5F8FF; 
+    background-color: #ecf1fd; 
     color: #000000;
     font-family: "Segoe UI";
     font-size: 11pt;
@@ -15,7 +15,7 @@ QGroupBox {
     background-color: #FFFFFF;      
     border-radius: 20px;
     border: none;
-    padding: 36px 28px 28px 28px;
+    padding: 40px 28px 28px 28px;
     font: 600 14pt "Segoe UI";
     box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.10);
     margin: 18px 14px;
@@ -37,38 +37,105 @@ QGroupBox::title {
     subcontrol-position: top left; 
     margin-top: 10px;      
     margin-left: 20px;
-    color: #0078D7;
+    color: #0077b6;
     font: 600 14pt "Segoe UI";
+    padding-left: 40px; 
+    background-repeat: no-repeat;
+    background-position: left center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    min-height: 32px;
+}
+
+/* Titulos */
+QGroupBox#group_control::title {
+    background-image: url("icons/ajustes.png");
+    background-repeat: no-repeat;
+    background-position: 8px center;
+    background-size: 20px 20px;
+    padding-left: 40px;
+}
+
+QGroupBox#group_grafica::title {
+    background-image: url("icons/graph.png");
+    background-repeat: no-repeat;
+    background-position: 8px center;
+    background-size: 20px 20px;
+    padding-left: 40px;
+}
+
+QGroupBox#group_tabla::title {
+    background-image: url("icons/table.png");
+    background-repeat: no-repeat;
+    background-position: 8px center;
+    background-size: 20px 20px;
+    padding-left: 40px;
 }
 
 /* === PUSH BUTTONS === */
 QPushButton {
-    background: qlineargradient(
-        x1:0, y1:0, x2:0, y2:1,
-        stop:0 #4A90E2,
-        stop:1 #357ABD
-    );
+    background: #0077b6;
     color: #FFFFFF;
     border: none;
     border-radius: 14px;
     padding: 8px 16px;
     font-weight: 600;
     font-size: 11pt;
-    box-shadow: 0px 4px 10px rgba(74, 144, 226, 0.3);
+    box-shadow: 0px 4px 10px rgba(0, 119, 182, 0.3);
 }
 
 QPushButton:hover {
-    background: qlineargradient(
-        x1:0, y1:0, x2:0, y2:1,
-        stop:0 #5AA4F3,
-        stop:1 #3D86C8
-    );
+    background: #0096c7;
 }
 
+
 QPushButton:pressed {
-    background: #2F6CA5;
+    background: #005f87;
     transform: scale(0.97);
 }
+
+/* === BOTÓN DE IDIOMA (QToolButton) === */
+QToolButton#btn_language {
+    background-color: #0077b6;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 14px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 11pt;
+    box-shadow: 0px 4px 10px rgba(0, 119, 182, 0.3);
+}
+
+
+QToolButton#btn_language:hover {
+    background-color: #0096c7;
+}
+
+QToolButton#btn_language:pressed {
+    background-color: #005f87;
+    transform: scale(0.97);
+}
+
+/* --- Menú desplegable del botón --- */
+QMenu {
+    background-color: #FFFFFF;
+    border: 1px solid #C9D6E8;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 6px 14px;
+    font-size: 10.5pt;
+    color: #000000;
+    border-radius: 6px;
+}
+
+QMenu::item:selected {
+    background-color: #E0EEFF;
+    color: #0078D7;
+}
+
 
 /* === LABELS === */
 QLabel {
@@ -90,11 +157,7 @@ QTableWidget {
 
 /* === CABECERA UNIFICADA === */
 QHeaderView::section {
-    background: qlineargradient(
-        x1:0, y1:0, x2:0, y2:1,
-        stop:0 #4A90E2,
-        stop:1 #357ABD
-    );
+    background: #0077b6;
     color: #FFFFFF;
     font: 600 10.5pt "Segoe UI";
     padding: 8px 6px;
@@ -123,10 +186,33 @@ QTableWidget::item:selected {
 
 
 /* === BLOQUE MEDIDAS EN TIEMPO REAL === */
-QGroupBox#group_lecturas QLabel {
-    font-size: 10pt;
-    padding: 6px;
+QGroupBox#group_lecturas {
+    background-color: #0077b6;  
+    border-radius: 20px;
+    border: none;
+    font: 600 14pt "Segoe UI";
+    box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.10);
+    margin: 22px 14px;
+    padding-top: 70px;
 }
+
+/* Título de ese bloque */
+QGroupBox#group_lecturas::title {
+    color: #ffffff;              
+    font: 700 14pt "Segoe UI";
+    margin-left: 20px;
+    margin-top: 10px;
+    background-image: url("icons/measures.png");
+}
+
+/* Texto dentro del bloque (más claro para contrastar) */
+QGroupBox#group_lecturas QLabel {
+    background: transparent;
+    color: #FFFFFF;
+    font-size: 11pt;
+    font-weight: 500;
+}
+
 
 
 /* === QSLIDER === */
@@ -147,4 +233,93 @@ QSlider::handle:vertical {
     height: 22px;
     margin: -4px -14px;
     border-radius: 10px;
+}
+
+/* === SCROLLBAR MODERNO CON PUNTAS REDONDEADAS VISIBLES === */
+
+QScrollBar:vertical {
+    background: #edf2ff;          /* azul muy claro, integrado con fondo */
+    border: none;
+    width: 14px;
+    margin: 6px 4px 6px 0;
+    border-radius: 7px;           /* curva el canal también */
+}
+
+/* Handle con efecto visual redondeado */
+QScrollBar::handle:vertical {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #4EA3F7,
+        stop:1 #0078D7
+    );
+    border-radius: 7px;
+    min-height: 30px;
+    margin: 3px 2px 3px 2px;      /* 🔹 deja espacio para que se vean las puntas */
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.15); /* simula curvatura */
+}
+
+/* Hover */
+QScrollBar::handle:vertical:hover {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5CB0FF,
+        stop:1 #2188E8
+    );
+}
+
+/* Quita las flechas */
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    background: transparent;
+    border: none;
+    height: 0;
+}
+
+/* Espacios vacíos transparentes */
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+/* Scrollbar horizontal */
+QScrollBar:horizontal {
+    background: #edf2ff;
+    border: none;
+    height: 14px;
+    margin: 0 6px 6px 6px;
+    border-radius: 7px;
+}
+
+QScrollBar::handle:horizontal {
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #4EA3F7,
+        stop:1 #0078D7
+    );
+    border-radius: 7px;
+    min-width: 30px;
+    margin: 3px 2px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.15);
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 #5CB0FF,
+        stop:1 #2188E8
+    );
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    background: transparent;
+    border: none;
+    width: 0;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: transparent;
 }

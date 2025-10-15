@@ -1,10 +1,10 @@
 {
   "es": {
     "title": "IT 03.2 - Convección Natural y Forzada (DIKOIN)",
-    "measurements": "📊 Medidas en tiempo real",
-    "control": "⚙️ Control del equipo",
-    "graph": "📈 Gráfica en tiempo real",
-    "results": "📋 Resultados de la práctica",
+    "measurements": "Medidas en tiempo real",
+    "control": "Control del equipo",
+    "graph": "Gráfica en tiempo real",
+    "results": "Resultados de la práctica",
     "labels": {
       "te": "Entrada (TE): {val:.2f} °C",
       "ts": "Salida (TS): {val:.2f} °C",
@@ -63,10 +63,10 @@
   },
   "en": {
     "title": "IT 03.2 - Natural and Forced Convection (DIKOIN)",
-    "measurements": "📊 Real-time measurements",
-    "control": "⚙️ Equipment Control",
-    "graph": "📈 Real-Time Graph",
-    "results": "📋 Practice Results",
+    "measurements": "Real-time measurements",
+    "control": "Equipment Control",
+    "graph": "Real-Time Graph",
+    "results": "Practice Results",
     "labels": {
       "te": "Inlet (TI): {val:.2f} °C",
       "ts": "Outlet (TO): {val:.2f} °C",

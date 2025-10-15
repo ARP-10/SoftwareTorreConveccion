@@ -20,6 +20,8 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHeaderView,
     QSizePolicy,
+    QToolButton,
+    QMenu,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont, QIcon
@@ -31,6 +33,7 @@ import pandas as pd
 from PyQt6.QtGui import QIcon
 from datetime import datetime
 import json
+from PyQt6.QtSvgWidgets import QSvgWidget
 
 
 # =======================================================
@@ -115,7 +118,7 @@ class MainWindow(QMainWindow):
         self.dial_fan = QDial()
         self.dial_fan.setRange(0, 255)
         self.dial_fan.setNotchesVisible(True)
-        self.dial_fan.setFixedSize(180, 180)
+        self.dial_fan.setFixedSize(160, 160)
         self.dial_fan.setWrapping(False)
         self.lbl_fan = QLabel(t["fan"].format(val=0))
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -132,10 +135,19 @@ class MainWindow(QMainWindow):
         # Calefactor (slider vertical)
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
         self.slider_heat.setRange(0, 255)
-        self.slider_heat.setFixedSize(90, 180)
-        self.lbl_heat = QLabel(t["heater"])
+        self.slider_heat.setFixedSize(70, 160)
+        self.lbl_heat = QLabel(t["heater"].format(val=0))
 
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Reservar el ancho para el peor caso (100%)
+        max_heat_text = t["heater"].format(val=100)  # ej: "Heater: 100%"
+        fm = self.lbl_heat.fontMetrics()
+        self.lbl_heat.setMinimumWidth(fm.horizontalAdvance(max_heat_text) + 24)
+        self.lbl_heat.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+        self.lbl_heat.setWordWrap(False)  # por si acaso, que no rompa línea
 
         self.slider_heat.valueChanged.connect(
             lambda v: self.lbl_heat.setText(t["heater"].format(val=int(v / 2.55)))
@@ -147,9 +159,17 @@ class MainWindow(QMainWindow):
         v_heat.addWidget(self.lbl_heat)
         v_heat.addWidget(self.slider_heat, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        fan_col = QWidget()
+        fan_col.setLayout(v_fan)
+        fan_col.setFixedWidth(168)
+        heat_col = QWidget()
+        heat_col.setLayout(v_heat)
+        heat_col.setFixedWidth(168)
+
         h_control = QHBoxLayout()
-        h_control.addLayout(v_fan)
-        h_control.addLayout(v_heat)
+        h_control.addWidget(fan_col)
+        h_control.addWidget(heat_col)
+        h_control.addStretch(1)  # espacio respirando a la derecha
         self.group_control.setLayout(h_control)
 
         # =======================================================
@@ -258,11 +278,11 @@ class MainWindow(QMainWindow):
         # Leyenda
         legend_widget = QWidget()
         legend_widget.setLayout(v_legend)
-        legend_widget.setFixedWidth(190)
+        legend_widget.setFixedWidth(165)
         legend_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         h_graf = QHBoxLayout()
-        h_graf.setContentsMargins(0, 0, 0, 0)
+        h_graf.setContentsMargins(0, 20, 0, 0)
         h_graf.setSpacing(10)
         h_graf.addWidget(self.plot_widget, stretch=4)
         h_graf.addWidget(legend_widget, alignment=Qt.AlignmentFlag.AlignTop)
@@ -294,14 +314,13 @@ class MainWindow(QMainWindow):
 
         header = self.table.horizontalHeader()
 
+        v_tabla = QVBoxLayout()
+        v_tabla.addWidget(self.table)
+        self.group_tabla.setLayout(v_tabla)
+
         self.btn_export = QPushButton(t["export"])
         self.btn_export.setFixedWidth(160)
         self.btn_export.clicked.connect(self.export_excel)
-
-        v_tabla = QVBoxLayout()
-        v_tabla.addWidget(self.table)
-        v_tabla.addWidget(self.btn_export)
-        self.group_tabla.setLayout(v_tabla)
 
         # =======================================================
         # BOTONES GENERALES
@@ -311,53 +330,65 @@ class MainWindow(QMainWindow):
         self.btn_iniciar = QPushButton(t["start"])
         self.btn_detener = QPushButton(t["stop"])
         self.btn_guardar = QPushButton(t["save"])
-        self.btn_salir = QPushButton(t["exit"])
+
+        # === BOTÓN DE IDIOMA ===
+        self.btn_language = QToolButton()
+        self.btn_language.setObjectName("btn_language")
+        self.btn_language.setText("🌐 Language")
+        self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        menu_language = QMenu(self)
+        menu_language.addAction("English", lambda: self.set_language("en"))
+        menu_language.addAction("Español", lambda: self.set_language("es"))
+        self.btn_language.setMenu(menu_language)
+
+        self.btn_language.setFixedHeight(32)
 
         h_botones = QHBoxLayout()
+
         for b in [
             self.btn_conectar,
             self.btn_calibrar,
             self.btn_iniciar,
             self.btn_detener,
             self.btn_guardar,
-            self.btn_salir,
+            self.btn_export,
         ]:
             b.setFixedHeight(32)
             h_botones.addWidget(b)
+
+        h_botones.addStretch()
+        h_botones.addWidget(self.btn_language)
 
         # =======================================================
         # LAYOUT GENERAL
         # =======================================================
 
-        # Parte superior: lecturas (izq) y control (der)
+        # === Barra superior con el botón de idioma ===
+        h_topbar = QHBoxLayout()
+        h_topbar.addWidget(self.btn_language, alignment=Qt.AlignmentFlag.AlignLeft)
+        h_topbar.addStretch()  # empuja hacia la izquierda
+
+        # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
         top_layout.addWidget(self.group_lecturas, 1)
         top_layout.addWidget(self.group_control, 1)
 
-        # Parte izquierda: bloque principal con top + gráfica + botones
+        # --- Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
+        left_layout.addLayout(h_topbar)  # 👈 añadimos la barra arriba del todo
         left_layout.addLayout(top_layout)
         left_layout.addWidget(self.group_grafica)
         left_layout.addLayout(h_botones)
 
-        # Layout principal: izquierda (funcional) + derecha (tabla)
+        # --- Layout principal: izquierda (funcional) + derecha (tabla)
         main_layout = QHBoxLayout()
-        main_layout.addLayout(left_layout, 3)
-        main_layout.addWidget(self.group_tabla, 2)
+        main_layout.addLayout(left_layout, 4)
+        main_layout.addWidget(self.group_tabla, 6)
 
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
-
-        # === Menú de idioma ===
-        menu_bar = self.menuBar()
-        menu_language = menu_bar.addMenu("🌐 Language")
-
-        action_en = menu_language.addAction("English")
-        action_es = menu_language.addAction("Español")
-
-        action_en.triggered.connect(lambda: self.set_language("en"))
-        action_es.triggered.connect(lambda: self.set_language("es"))
 
         # =======================================================
         # EVENTOS
@@ -367,7 +398,6 @@ class MainWindow(QMainWindow):
         self.btn_iniciar.clicked.connect(self.iniciar_lectura)
         self.btn_detener.clicked.connect(self.detener_lectura)
         self.btn_guardar.clicked.connect(self.guardar_dato)
-        self.btn_salir.clicked.connect(self.cerrar_programa)
 
         # Variables de datos
         (
@@ -493,8 +523,20 @@ class MainWindow(QMainWindow):
         self.btn_iniciar.setText(t["start"])
         self.btn_detener.setText(t["stop"])
         self.btn_guardar.setText(t["save"])
-        self.btn_salir.setText(t["exit"])
         self.btn_export.setText(t["export"])
+
+        # === BOTÓN DE IDIOMA ===
+        self.btn_language = QToolButton()
+        self.btn_language.setObjectName("btn_language")
+        self.btn_language.setText("🌐 Language")
+        self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        menu_language = QMenu(self)
+        menu_language.addAction("English", lambda: self.set_language("en"))
+        menu_language.addAction("Español", lambda: self.set_language("es"))
+        self.btn_language.setMenu(menu_language)
+
+        self.btn_language.setFixedHeight(32)
 
         # --- Controles (ventilador y calefactor) ---
         fan_value = int(self.dial_fan.value() / 2.55)
@@ -791,13 +833,17 @@ if __name__ == "__main__":
 
     # Estilo base “WindowsVista” (permite que QSS controle títulos y botones)
     from PyQt6.QtWidgets import QStyleFactory
+
     app.setStyle(QStyleFactory.create("WindowsVista"))
 
     # Fondo blanco global (no toca botones ni textos; QSS los pinta)
     from PyQt6.QtGui import QPalette, QColor
+
     pal = app.palette()
     pal.setColor(QPalette.ColorRole.Window, QColor("#FFFFFF"))  # fondo de ventanas
-    pal.setColor(QPalette.ColorRole.Base,   QColor("#FFFFFF"))  # fondo de widgets (tables, edits)
+    pal.setColor(
+        QPalette.ColorRole.Base, QColor("#FFFFFF")
+    )  # fondo de widgets (tables, edits)
     app.setPalette(pal)
 
     # Carga tu hoja de estilos
