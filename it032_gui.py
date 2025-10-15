@@ -87,14 +87,11 @@ class MainWindow(QMainWindow):
         self.reader_thread = None
         self.data_records = []
 
-        font_title = QFont("Segoe UI", 14, QFont.Weight.Bold)
-        font_value = QFont("Segoe UI", 12)
-
         # =======================================================
         # 📊 MEDIDAS EN TIEMPO REAL
         # =======================================================
         self.group_lecturas = QGroupBox(t["measurements"])
-        self.group_lecturas.setFont(font_title)
+        self.group_lecturas.setObjectName("group_lecturas")
         self.lbl_te = QLabel(t["labels"]["te"].format(val=0))
         self.lbl_ts = QLabel(t["labels"]["ts"].format(val=0))
         self.lbl_tc = QLabel(t["labels"]["tc"].format(val=0))
@@ -102,7 +99,6 @@ class MainWindow(QMainWindow):
         self.lbl_pot = QLabel(t["labels"]["pot"].format(val=0))
 
         for lbl in [self.lbl_te, self.lbl_ts, self.lbl_tc, self.lbl_vel, self.lbl_pot]:
-            lbl.setFont(font_value)
             lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         v_lecturas = QVBoxLayout()
@@ -114,7 +110,6 @@ class MainWindow(QMainWindow):
         # ⚙️ CONTROL DEL EQUIPO
         # =======================================================
         self.group_control = QGroupBox(t["control"])
-        self.group_control.setFont(font_title)
 
         # Ventilador (rueda)
         self.dial_fan = QDial()
@@ -123,8 +118,6 @@ class MainWindow(QMainWindow):
         self.dial_fan.setFixedSize(180, 180)
         self.dial_fan.setWrapping(False)
         self.lbl_fan = QLabel(t["fan"].format(val=0))
-        font_small = QFont("Verdana", 11)
-        self.lbl_fan.setFont(font_small)
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dial_fan.valueChanged.connect(
             lambda v: self.lbl_fan.setText(t["fan"].format(val=int(v / 2.55)))
@@ -141,31 +134,9 @@ class MainWindow(QMainWindow):
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(90, 180)
         self.lbl_heat = QLabel(t["heater"])
-        font_small = QFont("Verdana", 11)
-        self.lbl_heat.setFont(font_small)
 
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.slider_heat.setStyleSheet(
-            """
-            QSlider::groove:vertical {
-                width: 40px;
-                border-radius: 10px;
-                margin: 10px 0;
-                background: qlineargradient(
-                    x1:0, y1:1, x2:0, y2:0,
-                    stop:0 #80D8FF,
-                    stop:1 #007EB8
-                );
-            }
-            QSlider::handle:vertical {
-                background: #fff;
-                border: 2px solid #007EB8;
-                height: 22px;
-                margin: -4px -14px;
-                border-radius: 10px;
-            }
-        """
-        )
+
         self.slider_heat.valueChanged.connect(
             lambda v: self.lbl_heat.setText(t["heater"].format(val=int(v / 2.55)))
         )
@@ -185,7 +156,6 @@ class MainWindow(QMainWindow):
         # 📈 GRÁFICA
         # =======================================================
         self.group_grafica = QGroupBox(t["graph"])
-        self.group_grafica.setFont(font_title)
 
         self.plot_widget = pg.PlotWidget()
 
@@ -302,7 +272,6 @@ class MainWindow(QMainWindow):
         # 🧮 TABLA DE RESULTADOS
         # =======================================================
         self.group_tabla = QGroupBox(t["results"])
-        self.group_tabla.setFont(font_title)
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(t["table_headers"])
@@ -322,26 +291,6 @@ class MainWindow(QMainWindow):
 
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet(
-            """
-            QTableWidget {
-                background-color: #FFFFFF;
-                alternate-background-color: #FFFFFF;
-                gridline-color: #CCCCCC;
-                color: #000000;
-                selection-background-color: #E6F4FB;
-                selection-color: #000000;
-                font-size: 13px;
-            }
-            QHeaderView::section {
-                background-color: #007EB8;
-                color: #FFFFFF;
-                font-weight: bold;
-                border: 1px solid #CCCCCC;
-                padding: 4px;
-            }
-        """
-        )
 
         header = self.table.horizontalHeader()
 
@@ -717,6 +666,7 @@ class MainWindow(QMainWindow):
 class ResultsWindow(QWidget):
     def __init__(self, data_records):
         super().__init__()
+        self.setObjectName("ResultsTable")
         self.setWindowTitle(t[results])
         self.resize(900, 600)
         self.data_records = data_records
@@ -752,26 +702,6 @@ class ResultsWindow(QWidget):
 
         self.update_table()
 
-        self.table.setStyleSheet(
-            """
-            QTableWidget {
-                background-color: #1e1e1e;
-                alternate-background-color: #2a2a2a;
-                gridline-color: #444;
-                color: #f0f0f0;
-                selection-background-color: #444;
-                selection-color: white;
-                font-size: 13px;
-            }
-            QHeaderView::section {
-                background-color: #333;
-                color: #f0f0f0;
-                font-weight: bold;
-                border: 1px solid #444;
-                padding: 4px;
-            }
-        """
-        )
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
 
@@ -848,170 +778,31 @@ class ResultsWindow(QWidget):
 # =======================================================
 # EJECUCIÓN
 # =======================================================
+def load_stylesheet(app, path="style.qss"):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            app.setStyleSheet(f.read())
+    except Exception as e:
+        print(f"[QSS] No se pudo cargar '{path}': {e}")
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    app.setStyleSheet(
-        """
-    QWidget {
-        color: #000000;
-        font-family: Verdana, Geneva, sans-serif;
-    }
+    # Estilo base “WindowsVista” (permite que QSS controle títulos y botones)
+    from PyQt6.QtWidgets import QStyleFactory
+    app.setStyle(QStyleFactory.create("WindowsVista"))
 
-    QCheckBox,
-    QRadioButton,
-    QLineEdit,
-    QComboBox,
-    QPushButton {
-        background: none;
-    }
+    # Fondo blanco global (no toca botones ni textos; QSS los pinta)
+    from PyQt6.QtGui import QPalette, QColor
+    pal = app.palette()
+    pal.setColor(QPalette.ColorRole.Window, QColor("#FFFFFF"))  # fondo de ventanas
+    pal.setColor(QPalette.ColorRole.Base,   QColor("#FFFFFF"))  # fondo de widgets (tables, edits)
+    app.setPalette(pal)
 
-    QGroupBox {
-        border: 1px solid #CCCCCC;
-        border-radius: 6px;
-        margin-top: 20px;
-        padding-top: 16px;
-        background-color: #FFFFFF;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        subcontrol-position: top left;
-        padding: 4px 12px;
-        margin-top: -10px;
-        color: #007EB8;
-        font-weight: bold;
-        font-size: 13pt;
-        background-color: #FFFFFF;
-    }
-
-    QLabel {
-        color: #000000;
-    }
-
-    QPushButton {
-    background-color: #007EB8;
-    color: white;
-    border: 1px solid #006699;
-    border-radius: 6px;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    /* Simulación de profundidad con degradado */
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                stop:0 #009EE0,
-                                stop:1 #006699);
-    }
-    QPushButton:hover {
-        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                    stop:0 #00BFFF,
-                                    stop:1 #0077A6);
-    }
-    QPushButton:pressed {
-        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                    stop:0 #005C87,
-                                    stop:1 #004D70);
-    }
-    QPushButton:disabled {
-        background-color: #CCCCCC;
-        color: #666666;
-        border: 1px solid #AAAAAA;
-    }
-
-
-    QSlider::groove:vertical {
-        width: 40px;
-        border-radius: 10px;
-        background: qlineargradient(
-            x1:0, y1:1, x2:0, y2:0,
-            stop:0 #007EB8,
-            stop:1 #E0F4FF
-        );
-    }
-    QSlider::handle:vertical {
-        background: white;
-        border: 2px solid #007EB8;
-        height: 20px;
-        margin: -2px -16px;
-        border-radius: 10px;
-    }
-
-    /* === TABLA CLARA === */
-    QTableWidget {
-        background-color: #FFFFFF;
-        alternate-background-color: #FFFFFF;
-        gridline-color: #DDDDDD;
-        color: #000000;
-        font-size: 12px;
-        selection-background-color: #E6F4FB;
-        selection-color: #000000;
-    }
-    QHeaderView::section {
-        background-color: #007EB8;
-        color: #FFFFFF;
-        font-weight: bold;
-        border: 1px solid #CCCCCC;
-        padding: 4px;
-    }
-
-    QCheckBox {
-        color: #000000;
-        font-size: 20px;
-        spacing: 6px;
-    }
-
-
-
-        /* === SCROLLBAR PERSONALIZADO === */
-    QScrollBar:vertical {
-        border: none;
-        background: #F2F6F8;
-        width: 10px;
-        margin: 0px 0px 0px 0px;
-        border-radius: 5px;
-    }
-
-    QScrollBar::handle:vertical {
-        background: #007EB8;
-        min-height: 20px;
-        border-radius: 5px;
-    }
-
-    QScrollBar::handle:vertical:hover {
-        background: #009EE0;
-    }
-
-    QScrollBar::handle:vertical:pressed {
-        background: #005C87;
-    }
-
-    QScrollBar::add-line:vertical,
-    QScrollBar::sub-line:vertical {
-        border: none;
-        background: none;
-    }
-
-    QScrollBar:horizontal {
-        height: 10px;
-        background: #F2F6F8;
-        border: none;
-        border-radius: 5px;
-    }
-
-    QScrollBar::handle:horizontal {
-        background: #007EB8;
-        border-radius: 5px;
-    }
-
-    QScrollBar::handle:horizontal:hover {
-        background: #009EE0;
-    }
-
-    QScrollBar::handle:horizontal:pressed {
-        background: #005C87;
-    }
-
-"""
-    )
+    # Carga tu hoja de estilos
+    with open("style.qss", "r", encoding="utf-8") as f:
+        app.setStyleSheet(f.read())
 
     window = MainWindow()
     window.show()

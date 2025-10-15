@@ -1,0 +1,150 @@
+/* ============================================================
+   ESTILO GLOBAL - LABORATORIO DIKOIN
+   ============================================================ */
+
+/* === FONDO GENERAL === */
+QWidget {
+    background-color: #F5F8FF; 
+    color: #000000;
+    font-family: "Segoe UI";
+    font-size: 11pt;
+}
+
+/* === QGROUPBOX === */
+QGroupBox {
+    background-color: #FFFFFF;      
+    border-radius: 20px;
+    border: none;
+    padding: 36px 28px 28px 28px;
+    font: 600 14pt "Segoe UI";
+    box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.10);
+    margin: 18px 14px;
+}
+
+QGroupBox:hover {
+    box-shadow: 0px 12px 28px rgba(0, 0, 0, 0.30);
+    transform: scale(1.01);
+    transition: all 0.25s ease-in-out;
+}
+
+
+QGroupBox QWidget {
+    background-color: #FFFFFF;     
+}
+
+/* Nota: en algunos estilos el tamaño se coge de QGroupBox (no de ::title). */
+QGroupBox::title {      
+    subcontrol-position: top left; 
+    margin-top: 10px;      
+    margin-left: 20px;
+    color: #0078D7;
+    font: 600 14pt "Segoe UI";
+}
+
+/* === PUSH BUTTONS === */
+QPushButton {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #4A90E2,
+        stop:1 #357ABD
+    );
+    color: #FFFFFF;
+    border: none;
+    border-radius: 14px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 11pt;
+    box-shadow: 0px 4px 10px rgba(74, 144, 226, 0.3);
+}
+
+QPushButton:hover {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5AA4F3,
+        stop:1 #3D86C8
+    );
+}
+
+QPushButton:pressed {
+    background: #2F6CA5;
+    transform: scale(0.97);
+}
+
+/* === LABELS === */
+QLabel {
+    font-size: 12pt;
+    color: #000000;
+}
+
+/* === TABLA DE RESULTADOS === */
+QTableWidget {
+    background-color: #FFFFFF;
+    border-radius: 14px;
+    border: none;
+    gridline-color: #E0E6F0;
+    alternate-background-color: #F3F7FB;
+    selection-background-color: #E0F0FF;
+    font-size: 10pt;
+    box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* === CABECERA UNIFICADA === */
+QHeaderView::section {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #4A90E2,
+        stop:1 #357ABD
+    );
+    color: #FFFFFF;
+    font: 600 10.5pt "Segoe UI";
+    padding: 8px 6px;
+    border: none;
+}
+
+/* Redondea solo las esquinas externas */
+QHeaderView::section:first {
+    border-top-left-radius: 12px;
+}
+
+QHeaderView::section:last {
+    border-top-right-radius: 12px;
+}
+
+/* === FILAS === */
+QTableWidget::item {
+    padding: 6px;
+    border: none;
+}
+
+QTableWidget::item:selected {
+    background-color: #E1EEFF;
+    color: #000000;
+}
+
+
+/* === BLOQUE MEDIDAS EN TIEMPO REAL === */
+QGroupBox#group_lecturas QLabel {
+    font-size: 10pt;
+    padding: 6px;
+}
+
+
+/* === QSLIDER === */
+QSlider::groove:vertical {
+    width: 40px;
+    border-radius: 10px;
+    margin: 10px 0;
+    background: qlineargradient(
+        x1:0, y1:1, x2:0, y2:0,
+        stop:0 #A5D8FF,
+        stop:1 #0078D7
+    );
+}
+
+QSlider::handle:vertical {
+    background: #FFFFFF;
+    border: 2px solid #0078D7;
+    height: 22px;
+    margin: -4px -14px;
+    border-radius: 10px;
+}
