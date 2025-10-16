@@ -223,7 +223,7 @@ class MainWindow(QMainWindow):
         # === Checkboxes con color y textos desde el JSON ===
         def color_box(color, line_style="solid"):
             frame = QFrame()
-            frame.setFixedSize(30, 10)
+            frame.setFixedSize(30, 3)
 
             if line_style == "dot":
                 border_style = "dotted"
