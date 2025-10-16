@@ -364,6 +364,8 @@ class MainWindow(QMainWindow):
             self.btn_export,
         ]:
             b.setFixedHeight(32)
+            b.setFixedWidth(180)
+            b.setMinimumWidth(100)
             h_botones.addWidget(b)
         h_botones.addStretch()
 
@@ -378,19 +380,63 @@ class MainWindow(QMainWindow):
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
-        top_layout.addWidget(self.group_lecturas, stretch=6)  # 🟢 más ancho
-        top_layout.addWidget(self.group_control, stretch=4)  # 🔵 un poco más estrecho
+        top_layout.addWidget(self.group_lecturas, stretch=7)  # 🟢 más ancho
+        top_layout.addWidget(self.group_control, stretch=3)  # 🔵 un poco más estrecho
 
         # Aseguramos proporciones
-        top_layout.setStretch(0, 6)
-        top_layout.setStretch(1, 4)
+        top_layout.setStretch(0, 7)
+        top_layout.setStretch(1, 3)
+
+        self.group_lecturas.setMinimumWidth(350)
 
         # --- Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
         left_layout.addLayout(h_topbar)
         left_layout.addLayout(top_layout)
-        left_layout.addWidget(self.group_grafica, stretch=2)
-        left_layout.addLayout(h_botones)
+
+        # 🔹 Contenedor para gráfica + botones alineados con el área del plot
+        grafica_container = QWidget()
+        grafica_container_layout = QVBoxLayout(grafica_container)
+        grafica_container_layout.setContentsMargins(0, 0, 0, 0)
+        grafica_container_layout.setSpacing(0)
+
+        # 📉 Gráfica (dejamos su margen natural)
+        grafica_container_layout.addWidget(self.group_grafica)
+
+        # 📏 Botones alineados exactamente con la gráfica
+        botones_container = QWidget()
+        botones_layout = QHBoxLayout(botones_container)
+        botones_layout.setContentsMargins(0, 0, 0, 0)
+        botones_layout.setContentsMargins(
+            10, 0, 0, 0
+        )  # ⬅️ ajuste fino: mueve los botones a la izquierda
+        botones_layout.setSpacing(10)
+        botones_layout.addStretch(1)
+        for b in [
+            self.btn_conectar,
+            self.btn_calibrar,
+            self.btn_iniciar,
+            self.btn_detener,
+            self.btn_guardar,
+            self.btn_export,
+        ]:
+            botones_layout.addWidget(b)
+        botones_layout.addStretch()
+
+        # 📏 Contenedor intermedio que centra los botones con respecto al área del plot
+        botones_outer = QWidget()
+        botones_outer_layout = QHBoxLayout(botones_outer)
+        botones_outer_layout.setContentsMargins(0, 0, 0, 0)
+        botones_outer_layout.setSpacing(0)
+
+        # Añadimos los botones centrados dentro de la zona del plot (ignorando la leyenda)
+        botones_outer_layout.addWidget(botones_container, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        grafica_container_layout.addWidget(botones_outer)
+
+
+        # Añadir el bloque completo al layout principal de la izquierda
+        left_layout.addWidget(grafica_container)
 
         # --- Envolver la parte izquierda en un contenedor fijo
         left_widget = QWidget()
@@ -405,7 +451,6 @@ class MainWindow(QMainWindow):
         )
 
         # --- Evitar variación por textos traducidos ---
-        # Estos mínimos garantizan una proporción constante entre paneles
         left_widget.setMinimumWidth(800)
         self.group_tabla.setMinimumWidth(700)
 

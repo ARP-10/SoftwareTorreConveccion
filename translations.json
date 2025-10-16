@@ -30,7 +30,7 @@
     "stop": "⏹️ Detener",
     "save": "💾 Guardar dato",
     "exit": "🚪 Salir",
-    "export": "📗 Exportar Excel",
+    "export": "📗 Exportar",
     "legend_labels": [
       "Entrada (TE)",
       "Salida (TS)",
@@ -92,7 +92,7 @@
     "stop": "⏹️ Stop",
     "save": "💾 Save Data",
     "exit": "🚪 Exit",
-    "export": "📗 Export to Excel",
+    "export": "📗 Export",
     "legend_labels": [
       "Inlet (TI)",
       "Outlet (TO)",
