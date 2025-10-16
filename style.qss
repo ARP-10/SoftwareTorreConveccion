@@ -47,23 +47,56 @@ QGroupBox::title {
     min-height: 32px;
 }
 
-/* === TITULOS DE BLOQUES BLANCOS (alineados con Real-time measurements) === */
-QGroupBox#group_control::title,
-QGroupBox#group_grafica::title,
-QGroupBox#group_tabla::title {
-    background-repeat: no-repeat;
-    background-position: 14px 10px;   /* 🔹 Empuja el icono un poco hacia abajo */
-    background-size: 28px 28px;
-    padding-left: 54px;               /* espacio entre icono y texto */
-    margin-top: 0px;                  /* evita empuje hacia arriba */
-    line-height: 38px;                /* centra el texto verticalmente */
-    min-height: 48px;
+/* === CONTROL DEL EQUIPO === */
+/* Espacio extra entre título y contenido */
+QGroupBox#group_control {
+    padding-top: 60px;  /* 🔹 antes era 40px por defecto */
 }
 
-/* Iconos concretos */
-QGroupBox#group_control::title { background-image: url("icons/control.png"); }
-QGroupBox#group_grafica::title { background-image: url("icons/graph.png"); }
-QGroupBox#group_tabla::title   { background-image: url("icons/practice.png"); }
+QGroupBox#group_grafica {
+    padding-top: 60px;
+}
+
+QGroupBox#group_tabla {
+    padding-top: 60px;
+}
+
+
+QGroupBox#group_control::title {
+    color: #0077b6;
+    font: 700 14pt "Segoe UI";
+    margin-left: 20px;
+    margin-top: 10px;
+    background-image: url("icons/control.png");
+    background-repeat: no-repeat;
+    background-position: left center;
+    padding-left: 50px;
+}
+
+/* === GRÁFICA === */
+QGroupBox#group_grafica::title {
+    color: #0077b6;
+    font: 700 14pt "Segoe UI";
+    margin-left: 20px;
+    margin-top: 10px;
+    background-image: url("icons/graph.png");
+    background-repeat: no-repeat;
+    background-position: left center;
+    padding-left: 50px;
+}
+
+/* === RESULTADOS === */
+QGroupBox#group_tabla::title {
+    color: #0077b6;
+    font: 700 14pt "Segoe UI";
+    margin-left: 20px;
+    margin-top: 10px;
+    background-image: url("icons/practice.png");
+    background-repeat: no-repeat;
+    background-position: left center;
+    padding-left: 50px;
+}
+
 
 
 /* === PUSH BUTTONS === */
