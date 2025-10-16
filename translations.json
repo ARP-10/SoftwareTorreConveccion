@@ -12,8 +12,8 @@
       "vel": "Velocidad del aire: {val:.2f} m/s",
       "pot": "Potencia: {val:.2f} W"
     },
-    "fan": "Ventilador (FAN): {val} %",
-    "heater": "Calefactor (HEAT): {val} %",
+    "fan": "Ventilador: {val} %",
+    "heater": "Calefactor: {val} %",
     "table_headers": [
       "#",
       "Fecha",
@@ -74,8 +74,8 @@
       "vel": "Air Velocity: {val:.2f} m/s",
       "pot": "Power: {val:.2f} W"
     },
-    "fan": "Fan (FAN): {val} %",
-    "heater": "Heater (HEAT): {val} %",
+    "fan": "Fan: {val} %",
+    "heater": "Heater: {val} %",
     "table_headers": [
       "#",
       "Date",

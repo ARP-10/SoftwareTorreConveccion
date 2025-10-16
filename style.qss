@@ -47,30 +47,24 @@ QGroupBox::title {
     min-height: 32px;
 }
 
-/* Titulos */
-QGroupBox#group_control::title {
-    background-image: url("icons/ajustes.png");
-    background-repeat: no-repeat;
-    background-position: 8px center;
-    background-size: 20px 20px;
-    padding-left: 40px;
-}
-
-QGroupBox#group_grafica::title {
-    background-image: url("icons/graph.png");
-    background-repeat: no-repeat;
-    background-position: 8px center;
-    background-size: 20px 20px;
-    padding-left: 40px;
-}
-
+/* === TITULOS DE BLOQUES BLANCOS (alineados con Real-time measurements) === */
+QGroupBox#group_control::title,
+QGroupBox#group_grafica::title,
 QGroupBox#group_tabla::title {
-    background-image: url("icons/table.png");
     background-repeat: no-repeat;
-    background-position: 8px center;
-    background-size: 20px 20px;
-    padding-left: 40px;
+    background-position: 14px 10px;   /* 🔹 Empuja el icono un poco hacia abajo */
+    background-size: 28px 28px;
+    padding-left: 54px;               /* espacio entre icono y texto */
+    margin-top: 0px;                  /* evita empuje hacia arriba */
+    line-height: 38px;                /* centra el texto verticalmente */
+    min-height: 48px;
 }
+
+/* Iconos concretos */
+QGroupBox#group_control::title { background-image: url("icons/control.png"); }
+QGroupBox#group_grafica::title { background-image: url("icons/graph.png"); }
+QGroupBox#group_tabla::title   { background-image: url("icons/practice.png"); }
+
 
 /* === PUSH BUTTONS === */
 QPushButton {
@@ -234,6 +228,8 @@ QSlider::handle:vertical {
     margin: -4px -14px;
     border-radius: 10px;
 }
+
+
 
 /* === SCROLLBAR MODERNO CON PUNTAS REDONDEADAS VISIBLES === */
 

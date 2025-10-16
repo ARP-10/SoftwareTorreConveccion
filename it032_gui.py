@@ -113,6 +113,7 @@ class MainWindow(QMainWindow):
         # ⚙️ CONTROL DEL EQUIPO
         # =======================================================
         self.group_control = QGroupBox(t["control"])
+        self.group_control.setObjectName("group_control")
 
         # Ventilador (rueda)
         self.dial_fan = QDial()
@@ -120,17 +121,24 @@ class MainWindow(QMainWindow):
         self.dial_fan.setNotchesVisible(True)
         self.dial_fan.setFixedSize(160, 160)
         self.dial_fan.setWrapping(False)
+
         self.lbl_fan = QLabel(t["fan"].format(val=0))
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         self.dial_fan.valueChanged.connect(
             lambda v: self.lbl_fan.setText(t["fan"].format(val=int(v / 2.55)))
         )
         self.dial_fan.valueChanged.connect(
             lambda v: core.enviar_comando(self.ser, "FAN", v) if self.ser else None
         )
-        v_fan = QVBoxLayout()
-        v_fan.addWidget(self.lbl_fan)
-        v_fan.addWidget(self.dial_fan, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        fan_col = QWidget()
+        fan_layout = QVBoxLayout(fan_col)
+        fan_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        fan_layout.setSpacing(8)
+        fan_layout.addWidget(self.dial_fan, alignment=Qt.AlignmentFlag.AlignCenter)
+        fan_layout.addWidget(self.lbl_fan, alignment=Qt.AlignmentFlag.AlignCenter)
+        fan_col.setFixedWidth(180)
 
         # Calefactor (slider vertical)
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
@@ -155,27 +163,26 @@ class MainWindow(QMainWindow):
         self.slider_heat.valueChanged.connect(
             lambda v: core.enviar_comando(self.ser, "HEAT", v) if self.ser else None
         )
-        v_heat = QVBoxLayout()
-        v_heat.addWidget(self.lbl_heat)
-        v_heat.addWidget(self.slider_heat, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        fan_col = QWidget()
-        fan_col.setLayout(v_fan)
-        fan_col.setFixedWidth(168)
         heat_col = QWidget()
-        heat_col.setLayout(v_heat)
-        heat_col.setFixedWidth(168)
+        heat_layout = QVBoxLayout(heat_col)
+        heat_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        heat_layout.setSpacing(8)
+        heat_layout.addWidget(self.slider_heat, alignment=Qt.AlignmentFlag.AlignCenter)
+        heat_layout.addWidget(self.lbl_heat, alignment=Qt.AlignmentFlag.AlignCenter)
+        heat_col.setFixedWidth(180)
 
         h_control = QHBoxLayout()
         h_control.addWidget(fan_col)
         h_control.addWidget(heat_col)
-        h_control.addStretch(1)  # espacio respirando a la derecha
+        h_control.addStretch(1)
         self.group_control.setLayout(h_control)
 
         # =======================================================
         # 📈 GRÁFICA
         # =======================================================
         self.group_grafica = QGroupBox(t["graph"])
+        self.group_grafica.setObjectName("group_grafica")
 
         self.plot_widget = pg.PlotWidget()
 
@@ -292,6 +299,7 @@ class MainWindow(QMainWindow):
         # 🧮 TABLA DE RESULTADOS
         # =======================================================
         self.group_tabla = QGroupBox(t["results"])
+        self.group_tabla.setObjectName("group_tabla")
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(t["table_headers"])
@@ -323,7 +331,7 @@ class MainWindow(QMainWindow):
         self.btn_export.clicked.connect(self.export_excel)
 
         # =======================================================
-        # BOTONES GENERALES
+        # CREACIÓN DE BOTONES
         # =======================================================
         self.btn_conectar = QPushButton(t["connect"])
         self.btn_calibrar = QPushButton(t["calibrate"])
@@ -331,7 +339,7 @@ class MainWindow(QMainWindow):
         self.btn_detener = QPushButton(t["stop"])
         self.btn_guardar = QPushButton(t["save"])
 
-        # === BOTÓN DE IDIOMA ===
+        # Botón de idioma (solo una vez, no duplicar)
         self.btn_language = QToolButton()
         self.btn_language.setObjectName("btn_language")
         self.btn_language.setText("🌐 Language")
@@ -341,11 +349,12 @@ class MainWindow(QMainWindow):
         menu_language.addAction("English", lambda: self.set_language("en"))
         menu_language.addAction("Español", lambda: self.set_language("es"))
         self.btn_language.setMenu(menu_language)
-
         self.btn_language.setFixedHeight(32)
 
+        # =======================================================
+        # BOTONES GENERALES
+        # =======================================================
         h_botones = QHBoxLayout()
-
         for b in [
             self.btn_conectar,
             self.btn_calibrar,
@@ -356,9 +365,7 @@ class MainWindow(QMainWindow):
         ]:
             b.setFixedHeight(32)
             h_botones.addWidget(b)
-
         h_botones.addStretch()
-        h_botones.addWidget(self.btn_language)
 
         # =======================================================
         # LAYOUT GENERAL
@@ -367,25 +374,53 @@ class MainWindow(QMainWindow):
         # === Barra superior con el botón de idioma ===
         h_topbar = QHBoxLayout()
         h_topbar.addWidget(self.btn_language, alignment=Qt.AlignmentFlag.AlignLeft)
-        h_topbar.addStretch()  # empuja hacia la izquierda
+        h_topbar.addStretch()
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
-        top_layout.addWidget(self.group_lecturas, 1)
-        top_layout.addWidget(self.group_control, 1)
+        top_layout.addWidget(self.group_lecturas, stretch=6)  # 🟢 más ancho
+        top_layout.addWidget(self.group_control, stretch=4)  # 🔵 un poco más estrecho
+
+        # Aseguramos proporciones
+        top_layout.setStretch(0, 6)
+        top_layout.setStretch(1, 4)
 
         # --- Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
-        left_layout.addLayout(h_topbar)  # 👈 añadimos la barra arriba del todo
+        left_layout.addLayout(h_topbar)
         left_layout.addLayout(top_layout)
-        left_layout.addWidget(self.group_grafica)
+        left_layout.addWidget(self.group_grafica, stretch=2)
         left_layout.addLayout(h_botones)
+
+        # --- Envolver la parte izquierda en un contenedor fijo
+        left_widget = QWidget()
+        left_widget.setLayout(left_layout)
+        left_widget.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+
+        # --- Configurar políticas para mantener proporciones fijas ---
+        self.group_tabla.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
+
+        # --- Evitar variación por textos traducidos ---
+        # Estos mínimos garantizan una proporción constante entre paneles
+        left_widget.setMinimumWidth(800)
+        self.group_tabla.setMinimumWidth(700)
 
         # --- Layout principal: izquierda (funcional) + derecha (tabla)
         main_layout = QHBoxLayout()
-        main_layout.addLayout(left_layout, 4)
-        main_layout.addWidget(self.group_tabla, 6)
+        main_layout.addWidget(left_widget, stretch=6)
+        main_layout.addWidget(self.group_tabla, stretch=4)
 
+        # Asegurar proporciones fijas
+        main_layout.setStretch(0, 6)
+        main_layout.setStretch(1, 4)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+
+        # --- Contenedor principal ---
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
@@ -525,19 +560,6 @@ class MainWindow(QMainWindow):
         self.btn_guardar.setText(t["save"])
         self.btn_export.setText(t["export"])
 
-        # === BOTÓN DE IDIOMA ===
-        self.btn_language = QToolButton()
-        self.btn_language.setObjectName("btn_language")
-        self.btn_language.setText("🌐 Language")
-        self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-
-        menu_language = QMenu(self)
-        menu_language.addAction("English", lambda: self.set_language("en"))
-        menu_language.addAction("Español", lambda: self.set_language("es"))
-        self.btn_language.setMenu(menu_language)
-
-        self.btn_language.setFixedHeight(32)
-
         # --- Controles (ventilador y calefactor) ---
         fan_value = int(self.dial_fan.value() / 2.55)
         heat_value = int(self.slider_heat.value() / 2.55)
@@ -545,7 +567,13 @@ class MainWindow(QMainWindow):
         self.lbl_heat.setText(t["heater"].format(val=heat_value))
 
         # --- Tabla ---
-        self.table.setHorizontalHeaderLabels(t["table_headers"])
+        header_labels = t["table_headers"]
+        for i, label in enumerate(header_labels):
+            item = self.table.horizontalHeaderItem(i)
+            if item:
+                item.setText(label)
+            else:
+                self.table.setHorizontalHeaderItem(i, QTableWidgetItem(label))
 
         # --- Gráfica ---
         graph_labels = t["graph_labels"]
@@ -648,7 +676,10 @@ class MainWindow(QMainWindow):
                 self, "Sin datos", "No hay datos guardados para mostrar."
             )
             return
-        self.results_window = ResultsWindow(self.data_records)
+        self.results_window = ResultsWindow(
+            self.data_records, self.translations, self.current_lang
+        )
+
         self.results_window.show()
 
     def cerrar_programa(self):
@@ -705,38 +736,37 @@ class MainWindow(QMainWindow):
 # =======================================================
 # Ventana de resultados
 # =======================================================
+# =======================================================
+# Ventana de resultados
+# =======================================================
 class ResultsWindow(QWidget):
-    def __init__(self, data_records):
+    def __init__(self, data_records, translations, current_lang):
         super().__init__()
         self.setObjectName("ResultsTable")
-        self.setWindowTitle(t[results])
+        self.translations = translations
+        self.current_lang = current_lang
+
+        # Obtener traducciones activas
+        t = self.translations[self.current_lang]
+
+        # Usar el texto traducido para el título
+        self.setWindowTitle(t["results"])
         self.resize(900, 600)
         self.data_records = data_records
 
         # --- Tabla de datos ---
         self.table = QTableWidget()
         self.table.setColumnCount(8)
-        self.table.setHorizontalHeaderLabels(
-            [
-                "#",
-                "Fecha",
-                "Hora",
-                "TE (°C)",
-                "TS (°C)",
-                "TC (°C)",
-                "Vel (m/s)",
-                "Pot (W)",
-            ]
-        )
+        self.table.setHorizontalHeaderLabels(t["table_headers"])
 
         header = self.table.horizontalHeader()
 
         # 🔹 Columna # fija y más estrecha
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(0, 20)  # ancho más reducido pero visible
+        self.table.setColumnWidth(0, 20)
         header.setMinimumSectionSize(20)
 
-        # 🔹 Resto de columnas: mismas proporciones elásticas
+        # 🔹 Resto de columnas: proporciones elásticas
         for i in range(1, self.table.columnCount()):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
 
@@ -747,16 +777,12 @@ class ResultsWindow(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
 
-        # --- Ajuste del ancho de columnas ---
-        header = self.table.horizontalHeader()
-        header.setStretchLastSection(False)
-
         # --- Botones ---
-        btn_export_xlsx = QPushButton("📗 Exportar Excel")
-        btn_close = QPushButton("🚪 Cerrar")
+        btn_export_xlsx = QPushButton(t["export"])
+        btn_close = QPushButton(t["exit"])
 
-        btn_export_xlsx.setFixedWidth(150)
-        btn_close.setFixedWidth(150)
+        btn_export_xlsx.setFixedWidth(160)
+        btn_close.setFixedWidth(160)
 
         btn_export_xlsx.clicked.connect(self.export_excel)
         btn_close.clicked.connect(self.close)
@@ -776,17 +802,11 @@ class ResultsWindow(QWidget):
         """Actualiza la tabla con numeración y valores"""
         self.table.setRowCount(len(self.data_records))
         for i, record in enumerate(self.data_records):
-            # Columna 0: número de fila
             num_item = QTableWidgetItem(str(i + 1))
             num_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(i, 0, num_item)
-
-            # Resto de columnas
             for j, val in enumerate(record):
-                if isinstance(val, (int, float)):
-                    text = f"{val:.2f}"
-                else:
-                    text = str(val)
+                text = f"{val:.2f}" if isinstance(val, (int, float)) else str(val)
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setItem(i, j + 1, item)
@@ -794,27 +814,18 @@ class ResultsWindow(QWidget):
     def export_excel(self):
         """Exporta los datos a Excel (.xlsx) incluyendo numeración"""
         path, _ = QFileDialog.getSaveFileName(
-            self, "Guardar Excel", "", "Excel Files (*.xlsx)"
+            self,
+            self.translations[self.current_lang]["export"],
+            "",
+            "Excel Files (*.xlsx)",
         )
         if path:
-            df = pd.DataFrame(
-                self.data_records,
-                columns=[
-                    "Fecha",
-                    "Hora",
-                    "TE (°C)",
-                    "TS (°C)",
-                    "TC (°C)",
-                    "Vel (m/s)",
-                    "Pot (W)",
-                ],
-            )
-            df.index = df.index + 1  # numeración desde 1
+            t = self.translations[self.current_lang]
+            df = pd.DataFrame(self.data_records, columns=t["table_headers"][1:])
+            df.index = df.index + 1
             df.index.name = "#"
             df.to_excel(path)
-            QMessageBox.information(
-                self, "Exportación", "Archivo Excel guardado correctamente."
-            )
+            QMessageBox.information(self, t["export"], t["messages"]["export_ok"])
 
 
 # =======================================================
