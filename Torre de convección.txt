@@ -13,7 +13,7 @@ TAREAS:
 - Hacer que el dato del ventilador y el calefactor se envie cada 500 milisegundos al microcontrolador
 - Ahora cada dato lo vamos a recibir con su tipo desde el microcontrolador (hacer que se identifique cada uno y se coloque donde corresponda el programa), hacer que en caso de que llegue alguno otro, la tabla sea ampliable facil
 - Falta traducir los pop-ups de "conectado", "transmitiendo datos", etc. 
-
+- Cuando esta en español y tocas el ventilador o el calefactor, se cambia el texto a ingles
 
 IMPORTANTE ANTES DE CONVERTIR A .EXE
 - Usae este comando para hacer que el logo se quede bien guardado (antes habra que convertir a .ico el icono): pyinstaller --onefile --windowed --icon="fotos\dikoin_logo.ico" it032_gui.py
