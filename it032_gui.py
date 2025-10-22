@@ -327,6 +327,7 @@ class MainWindow(QMainWindow):
         self.group_tabla.setLayout(v_tabla)
 
         self.btn_export = QPushButton(t["export"])
+        self.btn_export.setIcon(QIcon("icons/export.png"))
         self.btn_export.setFixedWidth(160)
         self.btn_export.clicked.connect(self.export_excel)
 
@@ -334,16 +335,29 @@ class MainWindow(QMainWindow):
         # CREACIÓN DE BOTONES
         # =======================================================
         self.btn_conectar = QPushButton(t["connect"])
-        self.btn_calibrar = QPushButton(t["calibrate"])
-        self.btn_iniciar = QPushButton(t["start"])
-        self.btn_detener = QPushButton(t["stop"])
-        self.btn_guardar = QPushButton(t["save"])
+        self.btn_conectar.setIcon(QIcon("icons/connect.png"))
 
-        # Botón de idioma (solo una vez, no duplicar)
+        self.btn_calibrar = QPushButton(t["calibrate"])
+        self.btn_calibrar.setIcon(QIcon("icons/calibrate.png"))
+
+        self.btn_iniciar = QPushButton(t["start"])
+        self.btn_iniciar.setIcon(QIcon("icons/start.png"))
+
+        self.btn_detener = QPushButton(t["stop"])
+        self.btn_detener.setIcon(QIcon("icons/detener.png"))
+
+        self.btn_guardar = QPushButton(t["save"])
+        self.btn_guardar.setIcon(QIcon("icons/save.png"))
+
+
+        # Botón de idioma 
         self.btn_language = QToolButton()
         self.btn_language.setObjectName("btn_language")
-        self.btn_language.setText("🌐 Language")
-        self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.btn_language.setText("Language")
+        self.btn_language.setIcon(QIcon("icons/language.png"))  
+        self.btn_language.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+
 
         menu_language = QMenu(self)
         menu_language.addAction("English", lambda: self.set_language("en"))
@@ -380,7 +394,7 @@ class MainWindow(QMainWindow):
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
-        top_layout.addWidget(self.group_lecturas, stretch=7)  # 🟢 más ancho
+        top_layout.addWidget(self.group_lecturas, stretch=3)  # 🟢 más ancho
         top_layout.addWidget(self.group_control, stretch=3)  # 🔵 un poco más estrecho
 
         # Aseguramos proporciones
