@@ -125,9 +125,15 @@ class MainWindow(QMainWindow):
         self.lbl_fan = QLabel(t["fan"].format(val=0))
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.dial_fan.valueChanged.connect(
-            lambda v: self.lbl_fan.setText(t["fan"].format(val=int(v / 2.55)))
-        )
+        def update_fan_label(value):
+            t_local = self.translations[self.current_lang]
+            self.lbl_fan.setText(t_local["fan"].format(val=int(value / 2.55)))
+
+        def update_heat_label(value):
+            t_local = self.translations[self.current_lang]
+            self.lbl_heat.setText(t_local["heater"].format(val=int(value / 2.55)))
+
+        self.dial_fan.valueChanged.connect(update_fan_label)
         self.dial_fan.valueChanged.connect(
             lambda v: core.enviar_comando(self.ser, "FAN", v) if self.ser else None
         )
@@ -157,13 +163,10 @@ class MainWindow(QMainWindow):
         )
         self.lbl_heat.setWordWrap(False)  # por si acaso, que no rompa línea
 
-        self.slider_heat.valueChanged.connect(
-            lambda v: self.lbl_heat.setText(t["heater"].format(val=int(v / 2.55)))
-        )
+        self.slider_heat.valueChanged.connect(update_heat_label)
         self.slider_heat.valueChanged.connect(
             lambda v: core.enviar_comando(self.ser, "HEAT", v) if self.ser else None
         )
-
         heat_col = QWidget()
         heat_layout = QVBoxLayout(heat_col)
         heat_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
