@@ -28,12 +28,15 @@ from PyQt6.QtGui import QFont, QIcon
 import sys
 import time
 import pyqtgraph as pg
-import it032_core as core
 import pandas as pd
 from PyQt6.QtGui import QIcon
 from datetime import datetime
 import json
 from PyQt6.QtSvgWidgets import QSvgWidget
+import requests
+
+API_BASE_URL = "http://127.0.0.1:8000/api"  # cambia por tu IP si no está local
+MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
 
 
 # =======================================================
@@ -683,12 +686,32 @@ class MainWindow(QMainWindow):
         if not self.ser:
             QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
             return
+        
+        self.run_id = None
+        self.local_results = []
+        self.start_run_on_server()
+
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
         QMessageBox.information(
             self, "Lectura iniciada", "El equipo está transmitiendo datos."
         )
+
+    def start_run_on_server(self):
+        try:
+            response = requests.post(f"{API_BASE_URL}/runs/start", json={
+                "machine_id": MACHINE_ID,
+                "app_version": "1.0.0"
+            })
+            if response.status_code == 201:
+                self.run_id = response.json().get("run_id")
+                print(f"✅ Run iniciado en servidor: {self.run_id}")
+            else:
+                print(f"⚠️ Error al crear run: {response.text}")
+        except Exception as e:
+            print(f"❌ Error de conexión a la API: {e}")
+
 
     def detener_lectura(self):
         if self.reader_thread:
@@ -724,6 +747,22 @@ class MainWindow(QMainWindow):
         self.curve_tc.setData(self.data_x, self.data_tc)
         self.curve_vel.setData(self.data_x, self.data_vel)
         self.curve_pot.setData(self.data_x, self.data_pot)
+
+        # Guardar lectura localmente para envío posterior
+        if hasattr(self, "run_id") and self.run_id:
+            if not hasattr(self, "local_results"):
+                self.local_results = []
+            self.local_results.append({
+                "timestamp": datetime.utcnow().isoformat(),
+                "metrics": {
+                    "TE": te,
+                    "TS": ts,
+                    "TC": tc,
+                    "Velocity": vel,
+                    "Power": pot
+                }
+            })
+
 
     def toggle_curve_visibility(self):
         self.curve_te.setVisible(self.chk_te.isChecked())
@@ -792,6 +831,33 @@ class MainWindow(QMainWindow):
         if self.ser and self.ser.is_open:
             self.ser.close()
             time.sleep(1)
+
+        # Enviar resultados acumulados al servidor al cerrar
+        if hasattr(self, "run_id") and self.run_id and hasattr(self, "local_results") and self.local_results:
+            try:
+                payload = {
+                    "run_id": self.run_id,
+                    "results": self.local_results
+                }
+                print(f"📡 Enviando {len(self.local_results)} resultados al servidor...")
+                response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload, timeout=10)
+                if response.status_code == 201:
+                    print("✅ Resultados enviados correctamente.")
+                else:
+                    print(f"⚠️ Error al enviar resultados: {response.status_code} {response.text}")
+            except Exception as e:
+                print(f"❌ Falló el envío a la API: {e}")
+
+        # Cerrar el run
+        if hasattr(self, "run_id") and self.run_id:
+            try:
+                requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
+                print("🧾 Run cerrado correctamente en el servidor.")
+            except Exception as e:
+                print(f"⚠️ No se pudo cerrar el run: {e}")
+                
+                
+    
         event.accept()
 
 

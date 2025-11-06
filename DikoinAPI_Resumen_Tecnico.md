@@ -114,9 +114,7 @@ Project DikoinAPI {
 Table customers {
   id           bigserial [pk]
   name         text
-  email        text
   company_vat  text
-  created_at   timestamptz
 }
 
 Table products {
@@ -130,11 +128,10 @@ Table products {
 Table machines {
   id             bigserial [pk]
   customer_id    bigint [ref: > customers.id]
-  hw_fingerprint text    [unique] // sha256:...
-  serial_plain   text             // número de serie legible
+  product_id     bigint [ref: > products.id]
+  serial_plain   text             
   notes          text
   created_at     timestamptz
-  last_seen_at   timestamptz
 }
 
 Table licenses {
@@ -186,26 +183,17 @@ Table license_dispatches {
 /* === Sesiones y resultados === */
 Table runs {
   id          uuid [pk]
-  product_id  bigint [ref: > products.id]
-  machine_id  bigint [ref: > machines.id]
+  machine_id  bigint [ref: > machines.id, not null]
   license_id  bigint [ref: > licenses.id]
   app_version text
-  started_at  timestamptz
-  ended_at    timestamptz
+  created_at  timestamptz
 }
 
 Table results {
   id            bigserial [pk]
   run_id        uuid [ref: > runs.id, not null]
-  timestamp_utc timestamptz
   metrics       jsonb
   created_at    timestamptz
-
-  indexes {
-    run_id
-    timestamp_utc
-    metrics [type: gin]
-  }
 }
 
 /* === Actualizaciones del software === */
@@ -249,7 +237,6 @@ Table updates_telemetry {
   duration_ms  bigint
   created_at   timestamptz
 }
-
 
 ---
 
