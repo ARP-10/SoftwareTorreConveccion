@@ -34,9 +34,10 @@ from datetime import datetime
 import json
 from PyQt6.QtSvgWidgets import QSvgWidget
 import requests
+import it032_core as core
 
-API_BASE_URL = "http://127.0.0.1:8000/api"  # cambia por tu IP si no está local
-MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
+API_BASE_URL = "http://127.0.0.1:8000/"  # cambia por tu IP si no está local
+MACHINE_ID = 1  # ID de la máquina IT03.2 registrada
 
 
 # =======================================================
@@ -355,15 +356,15 @@ class MainWindow(QMainWindow):
         self.btn_guardar = QPushButton(t["save"])
         self.btn_guardar.setIcon(QIcon("icons/save.png"))
 
-
-        # Botón de idioma 
+        # Botón de idioma
         self.btn_language = QToolButton()
         self.btn_language.setObjectName("btn_language")
         self.btn_language.setText("Language")
-        self.btn_language.setIcon(QIcon("icons/language.png"))  
-        self.btn_language.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_language.setIcon(QIcon("icons/language.png"))
+        self.btn_language.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
         self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-
 
         menu_language = QMenu(self)
         menu_language.addAction("English", lambda: self.set_language("en"))
@@ -450,10 +451,11 @@ class MainWindow(QMainWindow):
         botones_outer_layout.setSpacing(0)
 
         # Añadimos los botones centrados dentro de la zona del plot (ignorando la leyenda)
-        botones_outer_layout.addWidget(botones_container, alignment=Qt.AlignmentFlag.AlignHCenter)
+        botones_outer_layout.addWidget(
+            botones_container, alignment=Qt.AlignmentFlag.AlignHCenter
+        )
 
         grafica_container_layout.addWidget(botones_outer)
-
 
         # Añadir el bloque completo al layout principal de la izquierda
         left_layout.addWidget(grafica_container)
@@ -686,7 +688,7 @@ class MainWindow(QMainWindow):
         if not self.ser:
             QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
             return
-        
+
         self.run_id = None
         self.local_results = []
         self.start_run_on_server()
@@ -700,10 +702,10 @@ class MainWindow(QMainWindow):
 
     def start_run_on_server(self):
         try:
-            response = requests.post(f"{API_BASE_URL}/runs/start", json={
-                "machine_id": MACHINE_ID,
-                "app_version": "1.0.0"
-            })
+            response = requests.post(
+                f"{API_BASE_URL}/runs/start",
+                json={"machine_id": MACHINE_ID, "app_version": "1.0.0"},
+            )
             if response.status_code == 201:
                 self.run_id = response.json().get("run_id")
                 print(f"✅ Run iniciado en servidor: {self.run_id}")
@@ -711,7 +713,6 @@ class MainWindow(QMainWindow):
                 print(f"⚠️ Error al crear run: {response.text}")
         except Exception as e:
             print(f"❌ Error de conexión a la API: {e}")
-
 
     def detener_lectura(self):
         if self.reader_thread:
@@ -752,17 +753,18 @@ class MainWindow(QMainWindow):
         if hasattr(self, "run_id") and self.run_id:
             if not hasattr(self, "local_results"):
                 self.local_results = []
-            self.local_results.append({
-                "timestamp": datetime.utcnow().isoformat(),
-                "metrics": {
-                    "TE": te,
-                    "TS": ts,
-                    "TC": tc,
-                    "Velocity": vel,
-                    "Power": pot
+            self.local_results.append(
+                {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "metrics": {
+                        "TE": te,
+                        "TS": ts,
+                        "TC": tc,
+                        "Velocity": vel,
+                        "Power": pot,
+                    },
                 }
-            })
-
+            )
 
     def toggle_curve_visibility(self):
         self.curve_te.setVisible(self.chk_te.isChecked())
@@ -833,18 +835,26 @@ class MainWindow(QMainWindow):
             time.sleep(1)
 
         # Enviar resultados acumulados al servidor al cerrar
-        if hasattr(self, "run_id") and self.run_id and hasattr(self, "local_results") and self.local_results:
+        if (
+            hasattr(self, "run_id")
+            and self.run_id
+            and hasattr(self, "local_results")
+            and self.local_results
+        ):
             try:
-                payload = {
-                    "run_id": self.run_id,
-                    "results": self.local_results
-                }
-                print(f"📡 Enviando {len(self.local_results)} resultados al servidor...")
-                response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload, timeout=10)
+                payload = {"run_id": self.run_id, "results": self.local_results}
+                print(
+                    f"📡 Enviando {len(self.local_results)} resultados al servidor..."
+                )
+                response = requests.post(
+                    f"{API_BASE_URL}/results/bulk", json=payload, timeout=10
+                )
                 if response.status_code == 201:
                     print("✅ Resultados enviados correctamente.")
                 else:
-                    print(f"⚠️ Error al enviar resultados: {response.status_code} {response.text}")
+                    print(
+                        f"⚠️ Error al enviar resultados: {response.status_code} {response.text}"
+                    )
             except Exception as e:
                 print(f"❌ Falló el envío a la API: {e}")
 
@@ -855,9 +865,7 @@ class MainWindow(QMainWindow):
                 print("🧾 Run cerrado correctamente en el servidor.")
             except Exception as e:
                 print(f"⚠️ No se pudo cerrar el run: {e}")
-                
-                
-    
+
         event.accept()
 
 
