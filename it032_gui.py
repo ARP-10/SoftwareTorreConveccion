@@ -34,9 +34,33 @@ from datetime import datetime
 import json
 from PyQt6.QtSvgWidgets import QSvgWidget
 import requests
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+from PyQt6.QtGui import QColor
 
 API_BASE_URL = "http://127.0.0.1:8000/api"  # cambia por tu IP si no está local
 MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
+
+def apply_shadow(widget, blur=30, x=0, y=6, alpha=120):
+    shadow = QGraphicsDropShadowEffect()
+    shadow.setBlurRadius(blur)
+    shadow.setXOffset(x)
+    shadow.setYOffset(y)
+    shadow.setColor(QColor(0, 0, 0, alpha))
+    widget.setGraphicsEffect(shadow)
+
+
+def create_card(inner_widget):
+    """Crea un contenedor tipo tarjeta con sombra y bordes redondeados."""
+    card = QWidget()
+    card.setObjectName("card")
+
+    lay = QVBoxLayout(card)
+    lay.setContentsMargins(12, 12, 12, 12) 
+    lay.addWidget(inner_widget)
+
+    apply_shadow(card, blur=60, y=2, alpha=50)
+    return card
+
 
 
 # =======================================================
@@ -93,11 +117,16 @@ class MainWindow(QMainWindow):
         self.reader_thread = None
         self.data_records = []
 
+        
+
+
         # =======================================================
         # 📊 MEDIDAS EN TIEMPO REAL
         # =======================================================
         self.group_lecturas = QGroupBox(t["measurements"])
         self.group_lecturas.setObjectName("group_lecturas")
+
+        # Labels
         self.lbl_te = QLabel(t["labels"]["te"].format(val=0))
         self.lbl_ts = QLabel(t["labels"]["ts"].format(val=0))
         self.lbl_tc = QLabel(t["labels"]["tc"].format(val=0))
@@ -110,7 +139,13 @@ class MainWindow(QMainWindow):
         v_lecturas = QVBoxLayout()
         for lbl in [self.lbl_te, self.lbl_ts, self.lbl_tc, self.lbl_vel, self.lbl_pot]:
             v_lecturas.addWidget(lbl)
+
         self.group_lecturas.setLayout(v_lecturas)
+
+        # --- card ---
+        self.card_lecturas = create_card(self.group_lecturas)
+
+
 
         # =======================================================
         # ⚙️ CONTROL DEL EQUIPO
@@ -118,71 +153,45 @@ class MainWindow(QMainWindow):
         self.group_control = QGroupBox(t["control"])
         self.group_control.setObjectName("group_control")
 
-        # Ventilador (rueda)
+        # --- Rueda del ventilador ---
         self.dial_fan = QDial()
         self.dial_fan.setRange(0, 255)
-        self.dial_fan.setNotchesVisible(True)
         self.dial_fan.setFixedSize(160, 160)
-        self.dial_fan.setWrapping(False)
+        self.dial_fan.setNotchesVisible(True)
 
         self.lbl_fan = QLabel(t["fan"].format(val=0))
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        def update_fan_label(value):
-            t_local = self.translations[self.current_lang]
-            self.lbl_fan.setText(t_local["fan"].format(val=int(value / 2.55)))
-
-        def update_heat_label(value):
-            t_local = self.translations[self.current_lang]
-            self.lbl_heat.setText(t_local["heater"].format(val=int(value / 2.55)))
-
-        self.dial_fan.valueChanged.connect(update_fan_label)
-        self.dial_fan.valueChanged.connect(
-            lambda v: core.enviar_comando(self.ser, "FAN", v) if self.ser else None
-        )
-
         fan_col = QWidget()
         fan_layout = QVBoxLayout(fan_col)
-        fan_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        fan_layout.setSpacing(8)
         fan_layout.addWidget(self.dial_fan, alignment=Qt.AlignmentFlag.AlignCenter)
         fan_layout.addWidget(self.lbl_fan, alignment=Qt.AlignmentFlag.AlignCenter)
-        fan_col.setFixedWidth(180)
 
-        # Calefactor (slider vertical)
+        # --- Slider del calentador ---
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(70, 160)
-        self.lbl_heat = QLabel(t["heater"].format(val=0))
 
+        self.lbl_heat = QLabel(t["heater"].format(val=0))
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Reservar el ancho para el peor caso (100%)
-        max_heat_text = t["heater"].format(val=100)  # ej: "Heater: 100%"
-        fm = self.lbl_heat.fontMetrics()
-        self.lbl_heat.setMinimumWidth(fm.horizontalAdvance(max_heat_text) + 24)
-        self.lbl_heat.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
-        )
-        self.lbl_heat.setWordWrap(False)  # por si acaso, que no rompa línea
-
-        self.slider_heat.valueChanged.connect(update_heat_label)
-        self.slider_heat.valueChanged.connect(
-            lambda v: core.enviar_comando(self.ser, "HEAT", v) if self.ser else None
-        )
         heat_col = QWidget()
         heat_layout = QVBoxLayout(heat_col)
-        heat_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        heat_layout.setSpacing(8)
         heat_layout.addWidget(self.slider_heat, alignment=Qt.AlignmentFlag.AlignCenter)
         heat_layout.addWidget(self.lbl_heat, alignment=Qt.AlignmentFlag.AlignCenter)
-        heat_col.setFixedWidth(180)
 
+        # Layout principal
         h_control = QHBoxLayout()
         h_control.addWidget(fan_col)
         h_control.addWidget(heat_col)
-        h_control.addStretch(1)
+        h_control.addStretch()
+
         self.group_control.setLayout(h_control)
+
+        # --- CARD ---
+        self.card_control = create_card(self.group_control)
+
+
 
         # =======================================================
         # 📈 GRÁFICA
@@ -192,51 +201,41 @@ class MainWindow(QMainWindow):
 
         self.plot_widget = pg.PlotWidget()
 
-        # === Apariencia clara para la gráfica ===
+        # Apariencia
         self.plot_widget.setBackground("#FFFFFF")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
 
-        # --- Etiquetas de los ejes desde el JSON ---
+        # Etiquetas de ejes
         graph_labels = t["graph_labels"]
         self.plot_widget.setLabel("left", graph_labels["y"], color="#000000")
         self.plot_widget.setLabel("bottom", graph_labels["x"], color="#000000")
 
-        # === Curvas de la gráfica (colores y nombres dinámicos) ===
+        # Curvas
         legend_labels = t["legend_labels"]
 
         self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[0]  # rojo vivo
-        )
+            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[0])
         self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[1]  # azul medio
-        )
+            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[1])
         self.curve_tc = self.plot_widget.plot(
-            pen=pg.mkPen("#27AE60", width=2), name=legend_labels[2]  # verde intenso
-        )
+            pen=pg.mkPen("#27AE60", width=2), name=legend_labels[2])
         self.curve_vel = self.plot_widget.plot(
-            pen=pg.mkPen(
-                "#F39C12", style=Qt.PenStyle.DotLine, width=2
-            ),  # naranja punteado
-            name=legend_labels[3],
-        )
+            pen=pg.mkPen("#F39C12", width=2, style=Qt.PenStyle.DotLine),
+            name=legend_labels[3])
         self.curve_pot = self.plot_widget.plot(
-            pen=pg.mkPen(
-                "#8E44AD", style=Qt.PenStyle.DashLine, width=2
-            ),  # violeta discontinuo
-            name=legend_labels[4],
-        )
+            pen=pg.mkPen("#8E44AD", width=2, style=Qt.PenStyle.DashLine),
+            name=legend_labels[4])
 
-        # === Checkboxes con color y textos desde el JSON ===
+        # === Función auxiliar para líneas de colores ===
         def color_box(color, line_style="solid"):
             frame = QFrame()
             frame.setFixedSize(30, 3)
 
-            if line_style == "dot":
-                border_style = "dotted"
-            elif line_style == "dash":
-                border_style = "dashed"
-            else:
-                border_style = "solid"
+            border_style = {
+                "solid": "solid",
+                "dot": "dotted",
+                "dash": "dashed"
+            }.get(line_style, "solid")
 
             frame.setStyleSheet(
                 f"""
@@ -249,9 +248,7 @@ class MainWindow(QMainWindow):
             )
             return frame
 
-        # Los nombres vienen de las etiquetas de leyenda
-        legend_labels = t["legend_labels"]
-
+        # === Checkboxes ===
         self.chk_te = QCheckBox(legend_labels[0])
         self.chk_ts = QCheckBox(legend_labels[1])
         self.chk_tc = QCheckBox(legend_labels[2])
@@ -261,24 +258,18 @@ class MainWindow(QMainWindow):
         for chk in [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]:
             chk.setChecked(True)
             chk.setStyleSheet("color: #000000; font-size: 13px; font-weight: 500;")
+            chk.stateChanged.connect(self.toggle_curve_visibility)
 
-        # Conexión de señales
-        self.chk_te.stateChanged.connect(self.toggle_curve_visibility)
-        self.chk_ts.stateChanged.connect(self.toggle_curve_visibility)
-        self.chk_tc.stateChanged.connect(self.toggle_curve_visibility)
-        self.chk_vel.stateChanged.connect(self.toggle_curve_visibility)
-        self.chk_pot.stateChanged.connect(self.toggle_curve_visibility)
-
-        # Leyenda lateral a la derecha
+        # === Columna de leyenda ===
         v_legend = QVBoxLayout()
         v_legend.setSpacing(2)
         v_legend.setContentsMargins(0, 0, 0, 0)
 
         for color, style, chk in zip(
-            ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
-            ["solid", "solid", "solid", "dot", "dash"],
-            [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
-        ):
+                ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
+                ["solid", "solid", "solid", "dot", "dash"],
+                [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]):
+            
             row = QHBoxLayout()
             row.setSpacing(5)
             row.setContentsMargins(0, 0, 0, 0)
@@ -287,59 +278,71 @@ class MainWindow(QMainWindow):
             v_legend.addLayout(row)
 
         v_legend.addStretch()
-
-        # Leyenda
         legend_widget = QWidget()
         legend_widget.setLayout(v_legend)
         legend_widget.setFixedWidth(165)
-        legend_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
+        # === Layout interno de la gráfica ===
         h_graf = QHBoxLayout()
         h_graf.setContentsMargins(0, 20, 0, 0)
-        h_graf.setSpacing(10)
         h_graf.addWidget(self.plot_widget, stretch=4)
-        h_graf.addWidget(legend_widget, alignment=Qt.AlignmentFlag.AlignTop)
+        h_graf.addWidget(legend_widget)
+
         self.group_grafica.setLayout(h_graf)
+
+        # === Convertir en CARD con sombra ===
+        self.card_grafica = QWidget()
+        self.card_grafica.setObjectName("card")
+
+        card_graf_layout = QVBoxLayout(self.card_grafica)
+        card_graf_layout.setContentsMargins(12, 12, 12, 12)
+        card_graf_layout.addWidget(self.group_grafica)
+
+        apply_shadow(self.card_grafica, blur=80, y=2, alpha=55)
+
 
         # =======================================================
         # 🧮 TABLA DE RESULTADOS
         # =======================================================
         self.group_tabla = QGroupBox(t["results"])
         self.group_tabla.setObjectName("group_tabla")
+
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(t["table_headers"])
 
         header = self.table.horizontalHeader()
-
-        # 🔹 Columna # fija y más estrecha
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(0, 20)
-        header.setMinimumSectionSize(20)
 
-        # 🔹 Resto de columnas: mismas proporciones elásticas
         for i in range(1, self.table.columnCount()):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
 
-        header.setStretchLastSection(False)
-
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-
-        header = self.table.horizontalHeader()
 
         v_tabla = QVBoxLayout()
         v_tabla.addWidget(self.table)
         self.group_tabla.setLayout(v_tabla)
 
+        # --- CARD DE LA TABLA ---
+        self.card_tabla = QWidget()
+        self.card_tabla.setObjectName("card")
+
+        card_tabla_layout = QVBoxLayout(self.card_tabla)
+        card_tabla_layout.setContentsMargins(0, 0, 0, 0)
+        card_tabla_layout.addWidget(self.group_tabla)
+
+        apply_shadow(self.card_tabla, blur=80, y=2, alpha=55)
+
+        # =======================================================
+        # CREACIÓN DE BOTONES
+        # =======================================================
         self.btn_export = QPushButton(t["export"])
         self.btn_export.setIcon(QIcon("icons/export.png"))
         self.btn_export.setFixedWidth(160)
         self.btn_export.clicked.connect(self.export_excel)
 
-        # =======================================================
-        # CREACIÓN DE BOTONES
-        # =======================================================
         self.btn_conectar = QPushButton(t["connect"])
         self.btn_conectar.setIcon(QIcon("icons/connect.png"))
 
@@ -389,6 +392,7 @@ class MainWindow(QMainWindow):
             h_botones.addWidget(b)
         h_botones.addStretch()
 
+
         # =======================================================
         # LAYOUT GENERAL
         # =======================================================
@@ -400,8 +404,8 @@ class MainWindow(QMainWindow):
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
-        top_layout.addWidget(self.group_lecturas, stretch=3)  # 🟢 más ancho
-        top_layout.addWidget(self.group_control, stretch=3)  # 🔵 un poco más estrecho
+        top_layout.addWidget(self.card_lecturas, stretch=3)  # 🟢 más ancho
+        top_layout.addWidget(self.card_control, stretch=3)  # 🔵 un poco más estrecho
 
         # Aseguramos proporciones
         top_layout.setStretch(0, 7)
@@ -417,11 +421,11 @@ class MainWindow(QMainWindow):
         # 🔹 Contenedor para gráfica + botones alineados con el área del plot
         grafica_container = QWidget()
         grafica_container_layout = QVBoxLayout(grafica_container)
-        grafica_container_layout.setContentsMargins(0, 0, 0, 0)
+        grafica_container_layout.setContentsMargins(15, 10, 15, 10)
         grafica_container_layout.setSpacing(0)
 
         # 📉 Gráfica (dejamos su margen natural)
-        grafica_container_layout.addWidget(self.group_grafica)
+        grafica_container_layout.addWidget(self.card_grafica)
 
         # 📏 Botones alineados exactamente con la gráfica
         botones_container = QWidget()
@@ -860,10 +864,6 @@ class MainWindow(QMainWindow):
     
         event.accept()
 
-
-# =======================================================
-# Ventana de resultados
-# =======================================================
 # =======================================================
 # Ventana de resultados
 # =======================================================

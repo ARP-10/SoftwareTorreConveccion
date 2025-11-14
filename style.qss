@@ -4,42 +4,45 @@
 
 /* === FONDO GENERAL === */
 QWidget {
-    background-color: #ecf1fd; 
+    background-color: #ecf1fd;
     color: #000000;
     font-family: "Segoe UI";
     font-size: 11pt;
 }
 
-/* === QGROUPBOX === */
+/* === TARJETAS (CARD) === */
+QWidget#card {
+    background: transparent;   /* ⬅⬅⬅ IMPORTANTE: transparente para que se vea la sombra */
+    border-radius: 20px;
+    padding: 10px;             /* ⬅⬅⬅ deja espacio a la sombra */
+}
+
+/* ============================================================
+   QGROUPBOX (contenedor interno con fondo blanco)
+   ============================================================ */
+
 QGroupBox {
-    background-color: #FFFFFF;      
+    background-color: #FFFFFF;
     border-radius: 20px;
     border: none;
     padding: 36px 28px 24px 28px;
     font: 600 14pt "Segoe UI";
-    box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.10);
     margin: 8px 8px;
 }
 
-QGroupBox:hover {
-    box-shadow: 0px 12px 28px rgba(0, 0, 0, 0.30);
-    transform: scale(1.01);
-    transition: all 0.25s ease-in-out;
-}
-
-
+/* Mantiene fondo interno blanco en cualquier widget dentro del GroupBox */
 QGroupBox QWidget {
-    background-color: #FFFFFF;     
+    background-color: #FFFFFF;
 }
 
-/* Nota: en algunos estilos el tamaño se coge de QGroupBox (no de ::title). */
-QGroupBox::title {      
-    subcontrol-position: top left; 
-    margin-top: 10px;      
+/* TÍTULOS DE QGROUPBOX */
+QGroupBox::title {
+    subcontrol-position: top left;
+    margin-top: 10px;
     margin-left: 20px;
     color: #0077b6;
     font: 600 14pt "Segoe UI";
-    padding-left: 40px; 
+    padding-left: 40px;
     background-repeat: no-repeat;
     background-position: left center;
     padding-top: 10px;
@@ -47,60 +50,79 @@ QGroupBox::title {
     min-height: 32px;
 }
 
-/* === CONTROL DEL EQUIPO === */
-/* Espacio extra entre título y contenido */
+/* ============================================================
+   CONTROL DEL EQUIPO
+   ============================================================ */
+
 QGroupBox#group_control {
-    padding-top: 60px;  /* 🔹 antes era 40px por defecto */
+    padding-top: 60px;
 }
+
+QGroupBox#group_control::title {
+    color: #0077b6;
+    font: 700 14pt "Segoe UI";
+    background-image: url("icons/control.png");
+    padding-left: 50px;
+}
+
+/* ============================================================
+   GRÁFICA
+   ============================================================ */
 
 QGroupBox#group_grafica {
     padding-top: 60px;
 }
+
+QGroupBox#group_grafica::title {
+    color: #0077b6;
+    font: 700 14pt "Segoe UI";
+    background-image: url("icons/graph.png");
+    padding-left: 50px;
+}
+
+/* ============================================================
+   RESULTADOS
+   ============================================================ */
 
 QGroupBox#group_tabla {
     padding-top: 60px;
     margin: 4px 8px;
 }
 
-
-QGroupBox#group_control::title {
-    color: #0077b6;
-    font: 700 14pt "Segoe UI";
-    margin-left: 20px;
-    margin-top: 10px;
-    background-image: url("icons/control.png");
-    background-repeat: no-repeat;
-    background-position: left center;
-    padding-left: 50px;
-}
-
-/* === GRÁFICA === */
-QGroupBox#group_grafica::title {
-    color: #0077b6;
-    font: 700 14pt "Segoe UI";
-    margin-left: 20px;
-    margin-top: 10px;
-    background-image: url("icons/graph.png");
-    background-repeat: no-repeat;
-    background-position: left center;
-    padding-left: 50px;
-}
-
-/* === RESULTADOS === */
 QGroupBox#group_tabla::title {
     color: #0077b6;
     font: 700 14pt "Segoe UI";
-    margin-left: 20px;
-    margin-top: 10px;
     background-image: url("icons/practice.png");
-    background-repeat: no-repeat;
-    background-position: left center;
     padding-left: 50px;
 }
 
+/* ============================================================
+   BLOQUE LECTURAS EN TIEMPO REAL
+   ============================================================ */
 
+QGroupBox#group_lecturas {
+    background-color: #0077b6;
+    border-radius: 20px;
+    padding-top: 70px;
+}
 
-/* === PUSH BUTTONS === */
+QGroupBox#group_lecturas::title {
+    color: #ffffff;
+    background-image: url("icons/measures.png");
+    padding-left: 50px;
+}
+
+QGroupBox#group_lecturas QLabel {
+    background: transparent;
+    color: #FFFFFF;
+    font-size: 11pt;
+    font-weight: 500;
+}
+
+/* ============================================================
+   PUSH BUTTONS
+   ============================================================ */
+
 QPushButton {
     background: #0077b6;
     color: #FFFFFF;
@@ -109,20 +131,20 @@ QPushButton {
     padding: 8px 16px;
     font-weight: 600;
     font-size: 11pt;
-    box-shadow: 0px 4px 10px rgba(0, 119, 182, 0.3);
 }
 
 QPushButton:hover {
     background: #0096c7;
 }
 
-
 QPushButton:pressed {
     background: #005f87;
-    transform: scale(0.97);
 }
 
-/* === BOTÓN DE IDIOMA (QToolButton) === */
+/* ============================================================
+   BOTÓN DE IDIOMA
+   ============================================================ */
+
 QToolButton#btn_language {
     background-color: #0077b6;
     color: #FFFFFF;
@@ -131,21 +153,9 @@ QToolButton#btn_language {
     padding: 4px 0px 4px 12px;
     font-weight: 600;
     font-size: 11pt;
-    box-shadow: 0px 4px 10px rgba(0, 119, 182, 0.3);
-    icon-size: 40px;
 }
 
-
-QToolButton#btn_language:hover {
-    background-color: #0096c7;
-}
-
-QToolButton#btn_language:pressed {
-    background-color: #005f87;
-    transform: scale(0.97);
-}
-
-/* --- Menú desplegable del botón --- */
+/* Menú */
 QMenu {
     background-color: #FFFFFF;
     border: 1px solid #C9D6E8;
@@ -156,8 +166,6 @@ QMenu {
 QMenu::item {
     padding: 6px 14px;
     font-size: 10.5pt;
-    color: #000000;
-    border-radius: 6px;
 }
 
 QMenu::item:selected {
@@ -165,14 +173,10 @@ QMenu::item:selected {
     color: #0078D7;
 }
 
+/* ============================================================
+   TABLA
+   ============================================================ */
 
-/* === LABELS === */
-QLabel {
-    font-size: 12pt;
-    color: #000000;
-}
-
-/* === TABLA DE RESULTADOS === */
 QTableWidget {
     background-color: #FFFFFF;
     border-radius: 14px;
@@ -181,10 +185,8 @@ QTableWidget {
     alternate-background-color: #F3F7FB;
     selection-background-color: #E0F0FF;
     font-size: 10pt;
-    box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* === CABECERA UNIFICADA === */
 QHeaderView::section {
     background: #0077b6;
     color: #FFFFFF;
@@ -193,7 +195,6 @@ QHeaderView::section {
     border: none;
 }
 
-/* Redondea solo las esquinas externas */
 QHeaderView::section:first {
     border-top-left-radius: 12px;
 }
@@ -201,47 +202,6 @@ QHeaderView::section:first {
 QHeaderView::section:last {
     border-top-right-radius: 12px;
 }
-
-/* === FILAS === */
-QTableWidget::item {
-    padding: 6px;
-    border: none;
-}
-
-QTableWidget::item:selected {
-    background-color: #E1EEFF;
-    color: #000000;
-}
-
-
-/* === BLOQUE MEDIDAS EN TIEMPO REAL === */
-QGroupBox#group_lecturas {
-    background-color: #0077b6;  
-    border-radius: 20px;
-    border: none;
-    font: 600 14pt "Segoe UI";
-    box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.10);
-    padding-top: 70px;
-}
-
-/* Título de ese bloque */
-QGroupBox#group_lecturas::title {
-    color: #ffffff;              
-    font: 700 14pt "Segoe UI";
-    margin-left: 20px;
-    margin-top: 10px;
-    padding-left: 50px;
-    background-image: url("icons/measures.png");
-}
-
-/* Texto dentro del bloque (más claro para contrastar) */
-QGroupBox#group_lecturas QLabel {
-    background: transparent;
-    color: #FFFFFF;
-    font-size: 11pt;
-    font-weight: 500;
-}
-
 
 
 /* === QSLIDER === */
@@ -287,7 +247,6 @@ QScrollBar::handle:vertical {
     min-height: 30px;
     margin: 3px 2px 3px 2px;      /* 🔹 deja espacio para que se vean las puntas */
     border: 1px solid rgba(0,0,0,0.08);
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.15); /* simula curvatura */
 }
 
 /* Hover */
@@ -332,7 +291,6 @@ QScrollBar::handle:horizontal {
     min-width: 30px;
     margin: 3px 2px;
     border: 1px solid rgba(0,0,0,0.08);
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.15);
 }
 
 QScrollBar::handle:horizontal:hover {
@@ -353,4 +311,9 @@ QScrollBar::sub-line:horizontal {
 QScrollBar::add-page:horizontal,
 QScrollBar::sub-page:horizontal {
     background: transparent;
+}
+
+#card {
+    background: white;
+    border-radius: 20px;
 }
