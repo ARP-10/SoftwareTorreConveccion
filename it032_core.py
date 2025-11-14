@@ -9,6 +9,7 @@ COM_TIMEOUT = 1.0
 READ_DELAY = 0.5
 CALIBRATION_SAMPLES = 10
 
+
 def detectar_puerto():
     """Detecta automáticamente el puerto COM donde está conectado el equipo."""
     print("🔍 Buscando puerto del equipo IT03.2...")
@@ -40,6 +41,7 @@ def detectar_puerto():
 
     print("⚠️ No se detectó automáticamente. Usa --port COMx si conoces el puerto.")
     return None
+
 
 def leer_linea(ser):
     try:
@@ -77,6 +79,7 @@ def calibrar_sensores(ser):
     print("\n✅ Calibración completada.")
     print(f"Offsets calculados: {offsets}\n")
     return offsets
+
 
 def enviar_comando(ser, tipo, valor):
     """Envía un comando FAN o HEAT al microcontrolador."""
