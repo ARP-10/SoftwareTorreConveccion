@@ -17,6 +17,9 @@ QWidget#card {
     padding: 10px;             /* ⬅⬅⬅ deja espacio a la sombra */
 }
 
+
+
+
 /* ============================================================
    QGROUPBOX (contenedor interno con fondo blanco)
    ============================================================ */
@@ -27,7 +30,7 @@ QGroupBox {
     border: none;
     padding: 36px 28px 24px 28px;
     font: 600 14pt "Segoe UI";
-    margin: 8px 8px;
+    margin: 0px 8px; 
 }
 
 /* Mantiene fondo interno blanco en cualquier widget dentro del GroupBox */
@@ -56,6 +59,7 @@ QGroupBox::title {
 
 QGroupBox#group_control {
     padding-top: 60px;
+    margin-bottom: 10px;
 }
 
 QGroupBox#group_control::title {
@@ -64,13 +68,13 @@ QGroupBox#group_control::title {
     background-image: url("icons/control.png");
     padding-left: 50px;
 }
-
 /* ============================================================
    GRÁFICA
    ============================================================ */
 
 QGroupBox#group_grafica {
     padding-top: 60px;
+    margin-top: 4px;
 }
 
 QGroupBox#group_grafica::title {
@@ -104,6 +108,7 @@ QGroupBox#group_lecturas {
     background-color: #0077b6;
     border-radius: 20px;
     padding-top: 70px;
+    margin-bottom: 10px;
 }
 
 QGroupBox#group_lecturas::title {

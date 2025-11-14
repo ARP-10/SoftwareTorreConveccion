@@ -40,7 +40,7 @@ from PyQt6.QtGui import QColor
 API_BASE_URL = "http://127.0.0.1:8000/"  # cambia por tu IP si no está local
 MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
 
-def apply_shadow(widget, blur=30, x=0, y=6, alpha=120):
+def apply_shadow(widget, blur=40, x=0, y=12, alpha=180):
     shadow = QGraphicsDropShadowEffect()
     shadow.setBlurRadius(blur)
     shadow.setXOffset(x)
@@ -284,9 +284,12 @@ class MainWindow(QMainWindow):
 
         # === Layout interno de la gráfica ===
         h_graf = QHBoxLayout()
-        h_graf.setContentsMargins(0, 20, 0, 0)
-        h_graf.addWidget(self.plot_widget, stretch=4)
-        h_graf.addWidget(legend_widget)
+        h_graf.setContentsMargins(0, 0, 0, 0)
+        h_graf.setSpacing(10)
+
+        h_graf.addWidget(self.plot_widget, stretch=12)
+        h_graf.addWidget(legend_widget, stretch=1)
+
 
         self.group_grafica.setLayout(h_graf)
 
@@ -295,7 +298,7 @@ class MainWindow(QMainWindow):
         self.card_grafica.setObjectName("card")
 
         card_graf_layout = QVBoxLayout(self.card_grafica)
-        card_graf_layout.setContentsMargins(12, 12, 12, 12)
+        card_graf_layout.setContentsMargins(20, 20, 20, 20)
         card_graf_layout.addWidget(self.group_grafica)
 
         apply_shadow(self.card_grafica, blur=80, y=2, alpha=55)
@@ -404,6 +407,8 @@ class MainWindow(QMainWindow):
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
+        top_layout.setSpacing(16)
+        top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.addWidget(self.card_lecturas, stretch=3)  # 🟢 más ancho
         top_layout.addWidget(self.card_control, stretch=3)  # 🔵 un poco más estrecho
 
@@ -415,14 +420,28 @@ class MainWindow(QMainWindow):
 
         # --- Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
         left_layout.addLayout(h_topbar)
         left_layout.addLayout(top_layout)
 
         # 🔹 Contenedor para gráfica + botones alineados con el área del plot
         grafica_container = QWidget()
         grafica_container_layout = QVBoxLayout(grafica_container)
-        grafica_container_layout.setContentsMargins(15, 10, 15, 10)
-        grafica_container_layout.setSpacing(0)
+        card_graf_layout.setContentsMargins(20, 20, 20, 20)
+
+        grafica_container_layout.setSpacing(10)
+
+        left_layout.setSpacing(0)
+
+        grafica_container.setMinimumHeight(450)
+
+        self.group_grafica.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding
+        )
+
+
 
         # 📉 Gráfica (dejamos su margen natural)
         grafica_container_layout.addWidget(self.card_grafica)
@@ -460,7 +479,8 @@ class MainWindow(QMainWindow):
 
 
         # Añadir el bloque completo al layout principal de la izquierda
-        left_layout.addWidget(grafica_container)
+        left_layout.addWidget(grafica_container, stretch=1)
+
 
         # --- Envolver la parte izquierda en un contenedor fijo
         left_widget = QWidget()
@@ -475,8 +495,8 @@ class MainWindow(QMainWindow):
         )
 
         # --- Evitar variación por textos traducidos ---
-        left_widget.setMinimumWidth(800)
-        self.group_tabla.setMinimumWidth(700)
+        left_widget.setMinimumWidth(600)
+        self.group_tabla.setMinimumWidth(620)
 
         # --- Layout principal: izquierda (funcional) + derecha (tabla)
         main_layout = QHBoxLayout()
