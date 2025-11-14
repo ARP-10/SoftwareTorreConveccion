@@ -37,7 +37,7 @@ import requests
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor
 
-API_BASE_URL = "http://127.0.0.1:8000/api"  # cambia por tu IP si no está local
+API_BASE_URL = "http://127.0.0.1:8000/"  # cambia por tu IP si no está local
 MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
 
 def apply_shadow(widget, blur=30, x=0, y=6, alpha=120):
@@ -704,10 +704,10 @@ class MainWindow(QMainWindow):
 
     def start_run_on_server(self):
         try:
-            response = requests.post(f"{API_BASE_URL}/runs/start", json={
-                "machine_id": MACHINE_ID,
-                "app_version": "1.0.0"
-            })
+            response = requests.post(
+                f"{API_BASE_URL}/runs/start",
+                json={"machine_id": MACHINE_ID, "app_version": "1.0.0"},
+            )
             if response.status_code == 201:
                 self.run_id = response.json().get("run_id")
                 print(f"✅ Run iniciado en servidor: {self.run_id}")
@@ -838,19 +838,28 @@ class MainWindow(QMainWindow):
 
         # Enviar resultados acumulados al servidor al cerrar
         if hasattr(self, "run_id") and self.run_id and hasattr(self, "local_results") and self.local_results:
-            try:
-                payload = {
-                    "run_id": self.run_id,
-                    "results": self.local_results
-                }
-                print(f"📡 Enviando {len(self.local_results)} resultados al servidor...")
-                response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload, timeout=10)
-                if response.status_code == 201:
-                    print("✅ Resultados enviados correctamente.")
-                else:
-                    print(f"⚠️ Error al enviar resultados: {response.status_code} {response.text}")
-            except Exception as e:
-                print(f"❌ Falló el envío a la API: {e}")
+            if (
+                hasattr(self, "run_id")
+                and self.run_id
+                and hasattr(self, "local_results")
+                and self.local_results
+            ):
+                try:
+                    payload = {"run_id": self.run_id, "results": self.local_results}
+                    print(
+                        f"📡 Enviando {len(self.local_results)} resultados al servidor..."
+                    )
+                    response = requests.post(
+                        f"{API_BASE_URL}/results/bulk", json=payload, timeout=10
+                    )
+                    if response.status_code == 201:
+                        print("✅ Resultados enviados correctamente.")
+                    else:
+                        print(
+                            f"⚠️ Error al enviar resultados: {response.status_code} {response.text}"
+                        )
+                except Exception as e:
+                    print(f"❌ Falló el envío a la API: {e}")
 
         # Cerrar el run
         if hasattr(self, "run_id") and self.run_id:
