@@ -34,34 +34,12 @@ from datetime import datetime
 import json
 from PyQt6.QtSvgWidgets import QSvgWidget
 import requests
-from PyQt6.QtWidgets import QGraphicsDropShadowEffect
-from PyQt6.QtGui import QColor
-import core
-
-API_BASE_URL = "http://127.0.0.1:8000/"  # cambia por tu IP si no está local
-MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
-
-def apply_shadow(widget, blur=40, x=0, y=12, alpha=180):
-    shadow = QGraphicsDropShadowEffect()
-    shadow.setBlurRadius(blur)
-    shadow.setXOffset(x)
-    shadow.setYOffset(y)
-    shadow.setColor(QColor(0, 0, 0, alpha))
-    widget.setGraphicsEffect(shadow)
+import core as core
+import serial
 
 
-def create_card(inner_widget):
-    """Crea un contenedor tipo tarjeta con sombra y bordes redondeados."""
-    card = QWidget()
-    card.setObjectName("card")
-
-    lay = QVBoxLayout(card)
-    lay.setContentsMargins(12, 12, 12, 12) 
-    lay.addWidget(inner_widget)
-
-    apply_shadow(card, blur=60, y=2, alpha=50)
-    return card
-
+API_BASE_URL = "http://127.0.0.1:8000/api"  # cambia por tu IP si no está local
+MACHINE_ID = 1  # ID de la máquina IT03.2 registrada
 
 
 # =======================================================
@@ -117,17 +95,18 @@ class MainWindow(QMainWindow):
         self.offsets = [0, 0, 0, 0, 0]
         self.reader_thread = None
         self.data_records = []
-
-        
-
+        # --- Últimas lecturas reales ---
+        self.last_te = 0.0
+        self.last_ts = 0.0
+        self.last_tc = 0.0
+        self.last_vel = 0.0
+        self.last_pot = 0.0
 
         # =======================================================
         # 📊 MEDIDAS EN TIEMPO REAL
         # =======================================================
         self.group_lecturas = QGroupBox(t["measurements"])
         self.group_lecturas.setObjectName("group_lecturas")
-
-        # Labels
         self.lbl_te = QLabel(t["labels"]["te"].format(val=0))
         self.lbl_ts = QLabel(t["labels"]["ts"].format(val=0))
         self.lbl_tc = QLabel(t["labels"]["tc"].format(val=0))
@@ -140,13 +119,7 @@ class MainWindow(QMainWindow):
         v_lecturas = QVBoxLayout()
         for lbl in [self.lbl_te, self.lbl_ts, self.lbl_tc, self.lbl_vel, self.lbl_pot]:
             v_lecturas.addWidget(lbl)
-
         self.group_lecturas.setLayout(v_lecturas)
-
-        # --- card ---
-        self.card_lecturas = create_card(self.group_lecturas)
-
-
 
         # =======================================================
         # ⚙️ CONTROL DEL EQUIPO
@@ -154,47 +127,94 @@ class MainWindow(QMainWindow):
         self.group_control = QGroupBox(t["control"])
         self.group_control.setObjectName("group_control")
 
-        # --- Rueda del ventilador ---
+        # ======================
+        # TIMERS PARA DEBOUNCE
+        # ======================
+        self.timer_fan = QTimer()
+        self.timer_fan.setInterval(120)
+        self.timer_fan.setSingleShot(True)
+        self.timer_fan.timeout.connect(self.enviar_fan)
+
+        self.timer_heat = QTimer()
+        self.timer_heat.setInterval(120)
+        self.timer_heat.setSingleShot(True)
+        self.timer_heat.timeout.connect(self.enviar_heat)
+
+        # ======================
+        # VENTILADOR (DIAL)
+        # ======================
         self.dial_fan = QDial()
-        self.dial_fan.valueChanged.connect(self.actualizar_fan)
         self.dial_fan.setRange(0, 255)
-        self.dial_fan.setFixedSize(160, 160)
         self.dial_fan.setNotchesVisible(True)
+        self.dial_fan.setFixedSize(160, 160)
+        self.dial_fan.setWrapping(False)
 
         self.lbl_fan = QLabel(t["fan"].format(val=0))
-        self.lbl_fan.setMinimumWidth(120)
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        def update_fan_label(value):
+            t_local = self.translations[self.current_lang]
+            self.lbl_fan.setText(t_local["fan"].format(val=int(value / 2.55)))
+
+        # ✔ Actualiza etiqueta
+        self.dial_fan.valueChanged.connect(update_fan_label)
+
+        # ✔ Envia el comando SOLO después de parar 120ms
+        self.dial_fan.valueChanged.connect(lambda v: self.timer_fan.start())
 
         fan_col = QWidget()
         fan_layout = QVBoxLayout(fan_col)
+        fan_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        fan_layout.setSpacing(8)
         fan_layout.addWidget(self.dial_fan, alignment=Qt.AlignmentFlag.AlignCenter)
         fan_layout.addWidget(self.lbl_fan, alignment=Qt.AlignmentFlag.AlignCenter)
+        fan_col.setFixedWidth(180)
 
-        # --- Slider del calentador ---
+        # ======================
+        # CALEFACTOR (SLIDER VERTICAL)
+        # ======================
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
-        self.slider_heat.valueChanged.connect(self.actualizar_heat)
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(70, 160)
 
         self.lbl_heat = QLabel(t["heater"].format(val=0))
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_heat.setMinimumWidth(120)
+
+        # Reservar ancho máximo
+        max_heat_text = t["heater"].format(val=100)
+        fm = self.lbl_heat.fontMetrics()
+        self.lbl_heat.setMinimumWidth(fm.horizontalAdvance(max_heat_text) + 24)
+        self.lbl_heat.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+        self.lbl_heat.setWordWrap(False)
+
+        def update_heat_label(value):
+            t_local = self.translations[self.current_lang]
+            self.lbl_heat.setText(t_local["heater"].format(val=int(value / 2.55)))
+
+        # ✔ Actualiza etiqueta
+        self.slider_heat.valueChanged.connect(update_heat_label)
+
+        # ✔ Envia comando con debounce 120ms
+        self.slider_heat.valueChanged.connect(lambda v: self.timer_heat.start())
 
         heat_col = QWidget()
         heat_layout = QVBoxLayout(heat_col)
+        heat_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        heat_layout.setSpacing(8)
         heat_layout.addWidget(self.slider_heat, alignment=Qt.AlignmentFlag.AlignCenter)
         heat_layout.addWidget(self.lbl_heat, alignment=Qt.AlignmentFlag.AlignCenter)
+        heat_col.setFixedWidth(180)
 
-        # Layout principal
+        # ======================
+        # LAYOUT FINAL
+        # ======================
         h_control = QHBoxLayout()
         h_control.addWidget(fan_col)
         h_control.addWidget(heat_col)
-        h_control.addStretch()
-
+        h_control.addStretch(1)
         self.group_control.setLayout(h_control)
-
-        # --- CARD ---
-        self.card_control = create_card(self.group_control)
 
         # =======================================================
         # 📈 GRÁFICA
@@ -204,41 +224,51 @@ class MainWindow(QMainWindow):
 
         self.plot_widget = pg.PlotWidget()
 
-        # Apariencia
+        # === Apariencia clara para la gráfica ===
         self.plot_widget.setBackground("#FFFFFF")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
 
-        # Etiquetas de ejes
+        # --- Etiquetas de los ejes desde el JSON ---
         graph_labels = t["graph_labels"]
         self.plot_widget.setLabel("left", graph_labels["y"], color="#000000")
         self.plot_widget.setLabel("bottom", graph_labels["x"], color="#000000")
 
-        # Curvas
+        # === Curvas de la gráfica (colores y nombres dinámicos) ===
         legend_labels = t["legend_labels"]
 
         self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[0])
+            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[0]  # rojo vivo
+        )
         self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[1])
+            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[1]  # azul medio
+        )
         self.curve_tc = self.plot_widget.plot(
-            pen=pg.mkPen("#27AE60", width=2), name=legend_labels[2])
+            pen=pg.mkPen("#27AE60", width=2), name=legend_labels[2]  # verde intenso
+        )
         self.curve_vel = self.plot_widget.plot(
-            pen=pg.mkPen("#F39C12", width=2, style=Qt.PenStyle.DotLine),
-            name=legend_labels[3])
+            pen=pg.mkPen(
+                "#F39C12", style=Qt.PenStyle.DotLine, width=2
+            ),  # naranja punteado
+            name=legend_labels[3],
+        )
         self.curve_pot = self.plot_widget.plot(
-            pen=pg.mkPen("#8E44AD", width=2, style=Qt.PenStyle.DashLine),
-            name=legend_labels[4])
+            pen=pg.mkPen(
+                "#8E44AD", style=Qt.PenStyle.DashLine, width=2
+            ),  # violeta discontinuo
+            name=legend_labels[4],
+        )
 
-        # === Función auxiliar para líneas de colores ===
+        # === Checkboxes con color y textos desde el JSON ===
         def color_box(color, line_style="solid"):
             frame = QFrame()
             frame.setFixedSize(30, 3)
 
-            border_style = {
-                "solid": "solid",
-                "dot": "dotted",
-                "dash": "dashed"
-            }.get(line_style, "solid")
+            if line_style == "dot":
+                border_style = "dotted"
+            elif line_style == "dash":
+                border_style = "dashed"
+            else:
+                border_style = "solid"
 
             frame.setStyleSheet(
                 f"""
@@ -251,7 +281,9 @@ class MainWindow(QMainWindow):
             )
             return frame
 
-        # === Checkboxes ===
+        # Los nombres vienen de las etiquetas de leyenda
+        legend_labels = t["legend_labels"]
+
         self.chk_te = QCheckBox(legend_labels[0])
         self.chk_ts = QCheckBox(legend_labels[1])
         self.chk_tc = QCheckBox(legend_labels[2])
@@ -261,18 +293,24 @@ class MainWindow(QMainWindow):
         for chk in [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]:
             chk.setChecked(True)
             chk.setStyleSheet("color: #000000; font-size: 13px; font-weight: 500;")
-            chk.stateChanged.connect(self.toggle_curve_visibility)
 
-        # === Columna de leyenda ===
+        # Conexión de señales
+        self.chk_te.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_ts.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_tc.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_vel.stateChanged.connect(self.toggle_curve_visibility)
+        self.chk_pot.stateChanged.connect(self.toggle_curve_visibility)
+
+        # Leyenda lateral a la derecha
         v_legend = QVBoxLayout()
         v_legend.setSpacing(2)
         v_legend.setContentsMargins(0, 0, 0, 0)
 
         for color, style, chk in zip(
-                ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
-                ["solid", "solid", "solid", "dot", "dash"],
-                [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]):
-            
+            ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
+            ["solid", "solid", "solid", "dot", "dash"],
+            [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
+        ):
             row = QHBoxLayout()
             row.setSpacing(5)
             row.setContentsMargins(0, 0, 0, 0)
@@ -281,79 +319,61 @@ class MainWindow(QMainWindow):
             v_legend.addLayout(row)
 
         v_legend.addStretch()
+
+        # Leyenda
         legend_widget = QWidget()
         legend_widget.setLayout(v_legend)
         legend_widget.setFixedWidth(165)
+        legend_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        # === Layout interno de la gráfica ===
         h_graf = QHBoxLayout()
-        h_graf.setContentsMargins(0, 0, 0, 0)
+        h_graf.setContentsMargins(0, 20, 0, 0)
         h_graf.setSpacing(10)
-
-        h_graf.addWidget(self.plot_widget, stretch=12)
-        h_graf.addWidget(legend_widget, stretch=1)
-
-
+        h_graf.addWidget(self.plot_widget, stretch=4)
+        h_graf.addWidget(legend_widget, alignment=Qt.AlignmentFlag.AlignTop)
         self.group_grafica.setLayout(h_graf)
-
-        # === Convertir en CARD con sombra ===
-        self.card_grafica = QWidget()
-        self.card_grafica.setObjectName("card")
-
-        card_graf_layout = QVBoxLayout(self.card_grafica)
-        card_graf_layout.setContentsMargins(8, 12, 8, 12)
-        card_graf_layout.addWidget(self.group_grafica)
-
-        apply_shadow(self.card_grafica, blur=40, y=2, alpha=40)
-
 
         # =======================================================
         # 🧮 TABLA DE RESULTADOS
         # =======================================================
         self.group_tabla = QGroupBox(t["results"])
         self.group_tabla.setObjectName("group_tabla")
-
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(t["table_headers"])
 
         header = self.table.horizontalHeader()
+
+        # 🔹 Columna # fija y más estrecha
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(0, 20)
+        header.setMinimumSectionSize(20)
 
+        # 🔹 Resto de columnas: mismas proporciones elásticas
         for i in range(1, self.table.columnCount()):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
 
+        header.setStretchLastSection(False)
+
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
+
+        header = self.table.horizontalHeader()
 
         v_tabla = QVBoxLayout()
         v_tabla.addWidget(self.table)
         self.group_tabla.setLayout(v_tabla)
 
-        # --- CARD DE LA TABLA ---
-        self.card_tabla = QWidget()
-        self.card_tabla.setObjectName("card")
-
-        card_tabla_layout = QVBoxLayout(self.card_tabla)
-        card_tabla_layout.setContentsMargins(0, 0, 0, 0)
-        card_tabla_layout.addWidget(self.group_tabla)
-
-        apply_shadow(self.card_tabla, blur=80, y=2, alpha=55)
-
-        # =======================================================
-        # CREACIÓN DE BOTONES
-        # =======================================================
         self.btn_export = QPushButton(t["export"])
         self.btn_export.setIcon(QIcon("icons/export.png"))
         self.btn_export.setFixedWidth(160)
         self.btn_export.clicked.connect(self.export_excel)
 
+        # =======================================================
+        # CREACIÓN DE BOTONES
+        # =======================================================
         self.btn_conectar = QPushButton(t["connect"])
         self.btn_conectar.setIcon(QIcon("icons/connect.png"))
-
-        self.btn_calibrar = QPushButton(t["calibrate"])
-        self.btn_calibrar.setIcon(QIcon("icons/calibrate.png"))
 
         self.btn_iniciar = QPushButton(t["start"])
         self.btn_iniciar.setIcon(QIcon("icons/start.png"))
@@ -364,27 +384,21 @@ class MainWindow(QMainWindow):
         self.btn_guardar = QPushButton(t["save"])
         self.btn_guardar.setIcon(QIcon("icons/save.png"))
 
-
-        # Botón de idioma 
+        # Botón de idioma
         self.btn_language = QToolButton()
         self.btn_language.setObjectName("btn_language")
-        self.btn_language.setText(t["language_button"])
+        self.btn_language.setText("Language")
         self.btn_language.setIcon(QIcon("icons/language.png"))
-        self.btn_language.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_language.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
         self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
-        # Menú de idiomas basado en JSON
-        self.menu_language = QMenu(self)
-
-        self.action_en = self.menu_language.addAction(t["lang_en"])
-        self.action_es = self.menu_language.addAction(t["lang_es"])
-
-        self.action_en.triggered.connect(lambda: self.set_language("en"))
-        self.action_es.triggered.connect(lambda: self.set_language("es"))
-
-        self.btn_language.setMenu(self.menu_language)
+        menu_language = QMenu(self)
+        menu_language.addAction("English", lambda: self.set_language("en"))
+        menu_language.addAction("Español", lambda: self.set_language("es"))
+        self.btn_language.setMenu(menu_language)
         self.btn_language.setFixedHeight(32)
-
 
         # =======================================================
         # BOTONES GENERALES
@@ -392,7 +406,6 @@ class MainWindow(QMainWindow):
         h_botones = QHBoxLayout()
         for b in [
             self.btn_conectar,
-            self.btn_calibrar,
             self.btn_iniciar,
             self.btn_detener,
             self.btn_guardar,
@@ -403,7 +416,6 @@ class MainWindow(QMainWindow):
             b.setMinimumWidth(100)
             h_botones.addWidget(b)
         h_botones.addStretch()
-
 
         # =======================================================
         # LAYOUT GENERAL
@@ -416,10 +428,8 @@ class MainWindow(QMainWindow):
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
-        top_layout.setSpacing(6)
-        top_layout.setContentsMargins(0, 0, 0, 0)
-        top_layout.addWidget(self.card_lecturas, stretch=3)  # 🟢 más ancho
-        top_layout.addWidget(self.card_control, stretch=3)  # 🔵 un poco más estrecho
+        top_layout.addWidget(self.group_lecturas, stretch=3)  # 🟢 más ancho
+        top_layout.addWidget(self.group_control, stretch=3)  # 🔵 un poco más estrecho
 
         # Aseguramos proporciones
         top_layout.setStretch(0, 7)
@@ -429,29 +439,17 @@ class MainWindow(QMainWindow):
 
         # --- Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(4)
         left_layout.addLayout(h_topbar)
         left_layout.addLayout(top_layout)
 
         # 🔹 Contenedor para gráfica + botones alineados con el área del plot
         grafica_container = QWidget()
         grafica_container_layout = QVBoxLayout(grafica_container)
-        card_graf_layout.setContentsMargins(2, 2, 2, 2)
-
-        #grafica_container_layout.setSpacing(4)
-
-        grafica_container.setMinimumHeight(450)
-
-        self.group_grafica.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding
-        )
-
-
+        grafica_container_layout.setContentsMargins(0, 0, 0, 0)
+        grafica_container_layout.setSpacing(0)
 
         # 📉 Gráfica (dejamos su margen natural)
-        grafica_container_layout.addWidget(self.card_grafica)
+        grafica_container_layout.addWidget(self.group_grafica)
 
         # 📏 Botones alineados exactamente con la gráfica
         botones_container = QWidget()
@@ -464,7 +462,6 @@ class MainWindow(QMainWindow):
         botones_layout.addStretch(1)
         for b in [
             self.btn_conectar,
-            self.btn_calibrar,
             self.btn_iniciar,
             self.btn_detener,
             self.btn_guardar,
@@ -480,14 +477,14 @@ class MainWindow(QMainWindow):
         botones_outer_layout.setSpacing(0)
 
         # Añadimos los botones centrados dentro de la zona del plot (ignorando la leyenda)
-        botones_outer_layout.addWidget(botones_container, alignment=Qt.AlignmentFlag.AlignHCenter)
+        botones_outer_layout.addWidget(
+            botones_container, alignment=Qt.AlignmentFlag.AlignHCenter
+        )
 
         grafica_container_layout.addWidget(botones_outer)
 
-
         # Añadir el bloque completo al layout principal de la izquierda
-        left_layout.addWidget(grafica_container, stretch=1)
-
+        left_layout.addWidget(grafica_container)
 
         # --- Envolver la parte izquierda en un contenedor fijo
         left_widget = QWidget()
@@ -502,8 +499,8 @@ class MainWindow(QMainWindow):
         )
 
         # --- Evitar variación por textos traducidos ---
-        left_widget.setMinimumWidth(600)
-        self.group_tabla.setMinimumWidth(620)
+        left_widget.setMinimumWidth(800)
+        self.group_tabla.setMinimumWidth(700)
 
         # --- Layout principal: izquierda (funcional) + derecha (tabla)
         main_layout = QHBoxLayout()
@@ -513,9 +510,8 @@ class MainWindow(QMainWindow):
         # Asegurar proporciones fijas
         main_layout.setStretch(0, 6)
         main_layout.setStretch(1, 4)
-        main_layout.setContentsMargins(6, 6, 6, 6)
-        main_layout.setSpacing(6)
-
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
 
         # --- Contenedor principal ---
         container = QWidget()
@@ -526,7 +522,6 @@ class MainWindow(QMainWindow):
         # EVENTOS
         # =======================================================
         self.btn_conectar.clicked.connect(self.conectar)
-        self.btn_calibrar.clicked.connect(self.calibrar)
         self.btn_iniciar.clicked.connect(self.iniciar_lectura)
         self.btn_detener.clicked.connect(self.detener_lectura)
         self.btn_guardar.clicked.connect(self.guardar_dato)
@@ -564,26 +559,39 @@ class MainWindow(QMainWindow):
             fecha = now.strftime("%d/%m/%Y")
             hora = now.strftime("%H:%M:%S")
 
-            te = float(self.lbl_te.text().split(":")[1].replace("°C", "").strip())
-            ts = float(self.lbl_ts.text().split(":")[1].replace("°C", "").strip())
-            tc = float(self.lbl_tc.text().split(":")[1].replace("°C", "").strip())
-            vel = float(self.lbl_vel.text().split(":")[1].replace("m/s", "").strip())
-            pot = float(self.lbl_pot.text().split(":")[1].replace("W", "").strip())
+            # Usamos los valores REALES, no los textos de los labels
+            te = self.last_te
+            ts = self.last_ts
+            tc = self.last_tc
+            vel = self.last_vel
+            pot = self.last_pot
 
             self.data_records.append([fecha, hora, te, ts, tc, vel, pot])
             self.table.setRowCount(len(self.data_records))
+
             i = len(self.data_records) - 1
+
             self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
             self.table.setItem(i, 1, QTableWidgetItem(fecha))
             self.table.setItem(i, 2, QTableWidgetItem(hora))
+
             for j, val in enumerate([te, ts, tc, vel, pot]):
                 self.table.setItem(i, j + 3, QTableWidgetItem(f"{val:.2f}"))
+
         except Exception as e:
             t = self.translations[self.current_lang]
             msg = t["messages"]["save_error"]
             QMessageBox.warning(self, t["results"], msg)
 
+    def enviar_fan(self):
+        if self.ser:
+            v = self.dial_fan.value()
+            core.enviar_comando(self.ser, "FAN", v)
 
+    def enviar_heat(self):
+        if self.ser:
+            v = self.slider_heat.value()
+            core.enviar_comando(self.ser, "HEAT", v)
 
     def export_excel(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -637,16 +645,8 @@ class MainWindow(QMainWindow):
         t = self.translations[lang]
         print(f"✅ Idioma cambiado a: {lang.upper()}")
 
-        # Actualizar el menú
-        self.action_en.setText(t["lang_en"])
-        self.action_es.setText(t["lang_es"])
-
         # --- Ventana principal ---
         self.setWindowTitle(t["title"])
-
-        
-        self.msg = t["messages"]
-
 
         # --- Grupos ---
         self.group_lecturas.setTitle(t["measurements"])
@@ -663,7 +663,6 @@ class MainWindow(QMainWindow):
 
         # --- Botones ---
         self.btn_conectar.setText(t["connect"])
-        self.btn_calibrar.setText(t["calibrate"])
         self.btn_iniciar.setText(t["start"])
         self.btn_detener.setText(t["stop"])
         self.btn_guardar.setText(t["save"])
@@ -708,42 +707,27 @@ class MainWindow(QMainWindow):
     # FUNCIONES PRINCIPALES
     # =======================================================
     def conectar(self):
-        t = self.translations[self.current_lang]  
         port = core.detectar_puerto()
         if not port:
             QMessageBox.warning(
-                self,
-                t["title"],                    
-                t["messages"]["connection_failed"]
+                self, "Conexión fallida", "No se detectó el equipo por USB."
             )
             return
 
-        self.ser = core.serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
-        QMessageBox.information(
-            self,
-            t["title"],
-            t["messages"]["connected"].format(port=port)
-        )
+        self.ser = serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
 
-    def calibrar(self):
-        t = self.translations[self.current_lang]
+        # Mensaje de éxito
+        QMessageBox.information(self, "Conectado", f"Equipo detectado en {port}")
 
-        if not self.ser:
-            QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
-            return
-        self.offsets = core.calibrar_sensores(self.ser)
-        QMessageBox.information(
-            self,
-            t["title"],
-            t["messages"]["calibration_done"]
-        )
-
+        # 🔹 Iniciar lectura automáticamente
+        self.iniciar_lectura()
 
     def iniciar_lectura(self):
-        t = self.translations[self.current_lang]
-
+        if self.reader_thread and self.reader_thread.isRunning():
+            QMessageBox.warning(self, "Aviso", "La lectura ya está iniciada.")
+            return
         if not self.ser:
-            QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
+            QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
             return
 
         self.run_id = None
@@ -753,9 +737,9 @@ class MainWindow(QMainWindow):
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
-
-        QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
-
+        QMessageBox.information(
+            self, "Lectura iniciada", "El equipo está transmitiendo datos."
+        )
 
     def start_run_on_server(self):
         try:
@@ -771,75 +755,65 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"❌ Error de conexión a la API: {e}")
 
-
     def detener_lectura(self):
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
-            t = self.translations[self.current_lang]
+            self.reader_thread = None
             QMessageBox.information(
-                self,
-                t["title"],
-                t["messages"]["reading_stopped"]
+                self, "Lectura detenida", "La lectura de datos ha sido detenida."
             )
 
     def actualizar_datos(self, te, ts, tc, vel, pot):
+        # Guardar valores reales (evitamos parsear textos del GUI)
+        self.last_te = te
+        self.last_ts = ts
+        self.last_tc = tc
+        self.last_vel = vel
+        self.last_pot = pot
+
+        # Cargar traducciones
         t = self.translations[self.current_lang]["labels"]
 
-        self.lbl_te.setText(t["te"].format(val=te))
-        self.lbl_ts.setText(t["ts"].format(val=ts))
-        self.lbl_tc.setText(t["tc"].format(val=tc))
-        self.lbl_vel.setText(t["vel"].format(val=vel))
-        self.lbl_pot.setText(t["pot"].format(val=pot))
+        # Mostrar texto formateado con 2 decimales
+        self.lbl_te.setText(t["te"].format(val=float(f"{te:.2f}")))
+        self.lbl_ts.setText(t["ts"].format(val=float(f"{ts:.2f}")))
+        self.lbl_tc.setText(t["tc"].format(val=float(f"{tc:.2f}")))
+        self.lbl_vel.setText(t["vel"].format(val=float(f"{vel:.2f}")))
+        self.lbl_pot.setText(t["pot"].format(val=float(f"{pot:.2f}")))
 
-
-        t = time.time() - self.t0
-        self.data_x.append(t)
+        # Acumular datos para gráfica
+        tiempo = time.time() - self.t0
+        self.data_x.append(tiempo)
         self.data_te.append(te)
         self.data_ts.append(ts)
         self.data_tc.append(tc)
         self.data_vel.append(vel)
         self.data_pot.append(pot)
 
-        # Evita que la memoria se sature (limitado a 200 puntos)
-        # if len(self.data_x) > 200:
-        #     self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot = [
-        #         lst[-200:] for lst in [self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot]
-        #     ]
-
+        # Actualizar curvas
         self.curve_te.setData(self.data_x, self.data_te)
         self.curve_ts.setData(self.data_x, self.data_ts)
         self.curve_tc.setData(self.data_x, self.data_tc)
         self.curve_vel.setData(self.data_x, self.data_vel)
         self.curve_pot.setData(self.data_x, self.data_pot)
 
-        # Guardar lectura localmente para envío posterior
+        # Guardar lectura para API
         if hasattr(self, "run_id") and self.run_id:
             if not hasattr(self, "local_results"):
                 self.local_results = []
-            self.local_results.append({
-                "timestamp": datetime.utcnow().isoformat(),
-                "metrics": {
-                    "TE": te,
-                    "TS": ts,
-                    "TC": tc,
-                    "Velocity": vel,
-                    "Power": pot
+            self.local_results.append(
+                {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "metrics": {
+                        "TE": te,
+                        "TS": ts,
+                        "TC": tc,
+                        "Velocity": vel,
+                        "Power": pot,
+                    },
                 }
-            })
-
-    def actualizar_fan(self, value):
-        """Actualiza el texto del ventilador según el idioma activo."""
-        t = self.translations[self.current_lang]
-        percent = int(value / 2.55)   # convierte 0–255 a 0–100%
-        self.lbl_fan.setText(t["fan"].format(val=percent))
-
-    def actualizar_heat(self, value):
-        """Actualiza el texto del calefactor según el idioma activo."""
-        t = self.translations[self.current_lang]
-        percent = int(value / 2.55)
-        self.lbl_heat.setText(t["heater"].format(val=percent))
-
+            )
 
     def toggle_curve_visibility(self):
         self.curve_te.setVisible(self.chk_te.isChecked())
@@ -910,29 +884,28 @@ class MainWindow(QMainWindow):
             time.sleep(1)
 
         # Enviar resultados acumulados al servidor al cerrar
-        if hasattr(self, "run_id") and self.run_id and hasattr(self, "local_results") and self.local_results:
-            if (
-                hasattr(self, "run_id")
-                and self.run_id
-                and hasattr(self, "local_results")
-                and self.local_results
-            ):
-                try:
-                    payload = {"run_id": self.run_id, "results": self.local_results}
+        if (
+            hasattr(self, "run_id")
+            and self.run_id
+            and hasattr(self, "local_results")
+            and self.local_results
+        ):
+            try:
+                payload = {"run_id": self.run_id, "results": self.local_results}
+                print(
+                    f"📡 Enviando {len(self.local_results)} resultados al servidor..."
+                )
+                response = requests.post(
+                    f"{API_BASE_URL}/results/bulk", json=payload, timeout=10
+                )
+                if response.status_code == 201:
+                    print("✅ Resultados enviados correctamente.")
+                else:
                     print(
-                        f"📡 Enviando {len(self.local_results)} resultados al servidor..."
+                        f"⚠️ Error al enviar resultados: {response.status_code} {response.text}"
                     )
-                    response = requests.post(
-                        f"{API_BASE_URL}/results/bulk", json=payload, timeout=10
-                    )
-                    if response.status_code == 201:
-                        print("✅ Resultados enviados correctamente.")
-                    else:
-                        print(
-                            f"⚠️ Error al enviar resultados: {response.status_code} {response.text}"
-                        )
-                except Exception as e:
-                    print(f"❌ Falló el envío a la API: {e}")
+            except Exception as e:
+                print(f"❌ Falló el envío a la API: {e}")
 
         # Cerrar el run
         if hasattr(self, "run_id") and self.run_id:
@@ -941,11 +914,13 @@ class MainWindow(QMainWindow):
                 print("🧾 Run cerrado correctamente en el servidor.")
             except Exception as e:
                 print(f"⚠️ No se pudo cerrar el run: {e}")
-                
-                
-    
+
         event.accept()
 
+
+# =======================================================
+# Ventana de resultados
+# =======================================================
 # =======================================================
 # Ventana de resultados
 # =======================================================

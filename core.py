@@ -11,7 +11,6 @@ CALIBRATION_SAMPLES = 10
 
 
 def detectar_puerto():
-    """Detecta automáticamente el puerto COM donde está conectado el equipo."""
     print("🔍 Buscando puerto del equipo IT03.2...")
     puertos = serial.tools.list_ports.comports()
     if not puertos:
@@ -22,20 +21,27 @@ def detectar_puerto():
         try:
             print(f"→ Probando {p.device} ...")
             with serial.Serial(p.device, BAUD, timeout=COM_TIMEOUT) as s:
-                time.sleep(2)  # Espera a que el Arduino reinicie y empiece a enviar
-                for _ in range(10):  # lee hasta 10 líneas
+                time.sleep(2)
+                for _ in range(10):
                     line = s.readline().decode(errors="ignore").strip()
                     if not line:
                         continue
+
                     parts = line.split("\t")
-                    # Se espera 5 valores numéricos separados por tab
-                    if len(parts) == 5:
+
+                    # Tu formato tiene exactamente 12 campos
+                    if len(parts) == 12:
                         try:
-                            floats = list(map(float, parts))
-                            print(f"✅ Equipo detectado en {p.device}: {floats}")
+                            float(parts[3])
+                            float(parts[5])
+                            float(parts[7])
+                            float(parts[9])
+                            float(parts[11])
+                            print(f"✅ Equipo detectado en {p.device}")
                             return p.device
-                        except ValueError:
+                        except:
                             continue
+
         except Exception as e:
             print(f"⚠️ {p.device} no válido ({e})")
 
@@ -48,37 +54,32 @@ def leer_linea(ser):
         line = ser.readline().decode(errors="ignore").strip()
         if not line:
             return None
+
         parts = line.split("\t")
-        if len(parts) != 5:
+
+        # Deben llegar 12 campos exactos
+        if len(parts) != 12:
             return None
-        vals = list(map(float, parts))
-        vals[0], vals[1] = vals[1], vals[0]
-        return vals
+
+        # Extraer los 5 valores numéricos en orden correcto:
+        # T.entrada → parts[3]
+        # T.salida  → parts[5]
+        # Termopar  → parts[7]
+        # V.aire    → parts[9]
+        # Potencia  → parts[11]
+        try:
+            te = float(parts[3])
+            ts = float(parts[5])
+            tc = float(parts[7])
+            vel = float(parts[9])
+            pot = float(parts[11])
+            return [te, ts, tc, vel, pot]
+        except:
+            return None
+
     except Exception as e:
         print(f"⚠️ Error leyendo línea: {e}")
         return None
-
-
-def calibrar_sensores(ser):
-    """Lee varias muestras iniciales y calcula los promedios como offsets."""
-    print("🧭 Calibrando sensores... espere unos segundos.")
-    muestras = []
-    for i in range(10):  # número de muestras
-        valores = leer_linea(ser)
-        if valores:
-            muestras.append(valores)
-            print(f"  Muestra {i+1}/10: {valores}")
-        time.sleep(READ_DELAY)
-
-    if not muestras:
-        print("❌ No se recibieron datos durante la calibración.")
-        return [0, 0, 0, 0, 0]
-
-    arr = np.array(muestras)
-    offsets = np.mean(arr, axis=0)
-    print("\n✅ Calibración completada.")
-    print(f"Offsets calculados: {offsets}\n")
-    return offsets
 
 
 def enviar_comando(ser, tipo, valor):
@@ -103,8 +104,6 @@ def main():
     ser = None
     try:
         ser = serial.Serial(port, BAUD, timeout=COM_TIMEOUT)
-        offsets = calibrar_sensores(ser)
-        t_read = threading.Thread(target=hilo_lectura, args=(ser, offsets), daemon=True)
         t_read.start()
         hilo_comandos(ser)
     except KeyboardInterrupt:
