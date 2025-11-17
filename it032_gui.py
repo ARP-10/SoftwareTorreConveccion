@@ -298,10 +298,10 @@ class MainWindow(QMainWindow):
         self.card_grafica.setObjectName("card")
 
         card_graf_layout = QVBoxLayout(self.card_grafica)
-        card_graf_layout.setContentsMargins(20, 20, 20, 20)
+        card_graf_layout.setContentsMargins(8, 12, 8, 12)
         card_graf_layout.addWidget(self.group_grafica)
 
-        apply_shadow(self.card_grafica, blur=80, y=2, alpha=55)
+        apply_shadow(self.card_grafica, blur=40, y=2, alpha=40)
 
 
         # =======================================================
@@ -407,7 +407,7 @@ class MainWindow(QMainWindow):
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
-        top_layout.setSpacing(16)
+        top_layout.setSpacing(6)
         top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.addWidget(self.card_lecturas, stretch=3)  # 🟢 más ancho
         top_layout.addWidget(self.card_control, stretch=3)  # 🔵 un poco más estrecho
@@ -421,18 +421,16 @@ class MainWindow(QMainWindow):
         # --- Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(8)
+        left_layout.setSpacing(4)
         left_layout.addLayout(h_topbar)
         left_layout.addLayout(top_layout)
 
         # 🔹 Contenedor para gráfica + botones alineados con el área del plot
         grafica_container = QWidget()
         grafica_container_layout = QVBoxLayout(grafica_container)
-        card_graf_layout.setContentsMargins(20, 20, 20, 20)
+        card_graf_layout.setContentsMargins(2, 2, 2, 2)
 
-        grafica_container_layout.setSpacing(10)
-
-        left_layout.setSpacing(0)
+        #grafica_container_layout.setSpacing(4)
 
         grafica_container.setMinimumHeight(450)
 
@@ -506,8 +504,9 @@ class MainWindow(QMainWindow):
         # Asegurar proporciones fijas
         main_layout.setStretch(0, 6)
         main_layout.setStretch(1, 4)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(6, 6, 6, 6)
+        main_layout.setSpacing(6)
+
 
         # --- Contenedor principal ---
         container = QWidget()

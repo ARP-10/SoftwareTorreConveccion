@@ -28,9 +28,9 @@ QGroupBox {
     background-color: #FFFFFF;
     border-radius: 20px;
     border: none;
-    padding: 36px 28px 24px 28px;
     font: 600 14pt "Segoe UI";
-    margin: 0px 8px; 
+    margin: 0px 4px; 
+    padding: 18px 18px 18px 18px;
 }
 
 /* Mantiene fondo interno blanco en cualquier widget dentro del GroupBox */
@@ -74,14 +74,12 @@ QGroupBox#group_control::title {
 
 QGroupBox#group_grafica {
     padding-top: 60px;
-    margin-top: 4px;
 }
 
 QGroupBox#group_grafica::title {
     color: #0077b6;
     font: 700 14pt "Segoe UI";
     background-image: url("icons/graph.png");
-    padding-left: 50px;
 }
 
 /* ============================================================
