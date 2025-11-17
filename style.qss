@@ -12,9 +12,9 @@ QWidget {
 
 /* === TARJETAS (CARD) === */
 QWidget#card {
-    background: transparent;   /* ⬅⬅⬅ IMPORTANTE: transparente para que se vea la sombra */
+    background: transparent;   /* blanco para que la sombra contraste */
     border-radius: 20px;
-    padding: 10px;             /* ⬅⬅⬅ deja espacio a la sombra */
+    padding: 14px;         /* más espacio para que la sombra se vea */
 }
 
 
@@ -155,7 +155,7 @@ QToolButton#btn_language {
     color: #FFFFFF;
     border: none;
     border-radius: 14px;
-    padding: 4px 0px 4px 12px;
+    padding: 6px 14px;
     font-weight: 600;
     font-size: 11pt;
 }
@@ -318,7 +318,3 @@ QScrollBar::sub-page:horizontal {
     background: transparent;
 }
 
-#card {
-    background: white;
-    border-radius: 20px;
-}
