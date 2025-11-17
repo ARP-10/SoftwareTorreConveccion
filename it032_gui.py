@@ -36,6 +36,7 @@ from PyQt6.QtSvgWidgets import QSvgWidget
 import requests
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor
+import core
 
 API_BASE_URL = "http://127.0.0.1:8000/"  # cambia por tu IP si no está local
 MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
@@ -155,11 +156,13 @@ class MainWindow(QMainWindow):
 
         # --- Rueda del ventilador ---
         self.dial_fan = QDial()
+        self.dial_fan.valueChanged.connect(self.actualizar_fan)
         self.dial_fan.setRange(0, 255)
         self.dial_fan.setFixedSize(160, 160)
         self.dial_fan.setNotchesVisible(True)
 
         self.lbl_fan = QLabel(t["fan"].format(val=0))
+        self.lbl_fan.setMinimumWidth(120)
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         fan_col = QWidget()
@@ -169,11 +172,13 @@ class MainWindow(QMainWindow):
 
         # --- Slider del calentador ---
         self.slider_heat = QSlider(Qt.Orientation.Vertical)
+        self.slider_heat.valueChanged.connect(self.actualizar_heat)
         self.slider_heat.setRange(0, 255)
         self.slider_heat.setFixedSize(70, 160)
 
         self.lbl_heat = QLabel(t["heater"].format(val=0))
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_heat.setMinimumWidth(120)
 
         heat_col = QWidget()
         heat_layout = QVBoxLayout(heat_col)
@@ -190,8 +195,6 @@ class MainWindow(QMainWindow):
 
         # --- CARD ---
         self.card_control = create_card(self.group_control)
-
-
 
         # =======================================================
         # 📈 GRÁFICA
@@ -365,17 +368,23 @@ class MainWindow(QMainWindow):
         # Botón de idioma 
         self.btn_language = QToolButton()
         self.btn_language.setObjectName("btn_language")
-        self.btn_language.setText("Language")
-        self.btn_language.setIcon(QIcon("icons/language.png"))  
+        self.btn_language.setText(t["language_button"])
+        self.btn_language.setIcon(QIcon("icons/language.png"))
         self.btn_language.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
+        # Menú de idiomas basado en JSON
+        self.menu_language = QMenu(self)
 
-        menu_language = QMenu(self)
-        menu_language.addAction("English", lambda: self.set_language("en"))
-        menu_language.addAction("Español", lambda: self.set_language("es"))
-        self.btn_language.setMenu(menu_language)
+        self.action_en = self.menu_language.addAction(t["lang_en"])
+        self.action_es = self.menu_language.addAction(t["lang_es"])
+
+        self.action_en.triggered.connect(lambda: self.set_language("en"))
+        self.action_es.triggered.connect(lambda: self.set_language("es"))
+
+        self.btn_language.setMenu(self.menu_language)
         self.btn_language.setFixedHeight(32)
+
 
         # =======================================================
         # BOTONES GENERALES
@@ -570,7 +579,11 @@ class MainWindow(QMainWindow):
             for j, val in enumerate([te, ts, tc, vel, pot]):
                 self.table.setItem(i, j + 3, QTableWidgetItem(f"{val:.2f}"))
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"No se pudo guardar el dato: {e}")
+            t = self.translations[self.current_lang]
+            msg = t["messages"]["save_error"]
+            QMessageBox.warning(self, t["results"], msg)
+
+
 
     def export_excel(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -624,8 +637,16 @@ class MainWindow(QMainWindow):
         t = self.translations[lang]
         print(f"✅ Idioma cambiado a: {lang.upper()}")
 
+        # Actualizar el menú
+        self.action_en.setText(t["lang_en"])
+        self.action_es.setText(t["lang_es"])
+
         # --- Ventana principal ---
         self.setWindowTitle(t["title"])
+
+        
+        self.msg = t["messages"]
+
 
         # --- Grupos ---
         self.group_lecturas.setTitle(t["measurements"])
@@ -687,29 +708,44 @@ class MainWindow(QMainWindow):
     # FUNCIONES PRINCIPALES
     # =======================================================
     def conectar(self):
+        t = self.translations[self.current_lang]  
         port = core.detectar_puerto()
         if not port:
             QMessageBox.warning(
-                self, "Conexión fallida", "No se detectó el equipo por USB."
+                self,
+                t["title"],                    
+                t["messages"]["connection_failed"]
             )
             return
+
         self.ser = core.serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
-        QMessageBox.information(self, "Conectado", f"Equipo detectado en {port}")
+        QMessageBox.information(
+            self,
+            t["title"],
+            t["messages"]["connected"].format(port=port)
+        )
 
     def calibrar(self):
+        t = self.translations[self.current_lang]
+
         if not self.ser:
-            QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
+            QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
             return
         self.offsets = core.calibrar_sensores(self.ser)
         QMessageBox.information(
-            self, "Calibración", "Calibración completada correctamente."
+            self,
+            t["title"],
+            t["messages"]["calibration_done"]
         )
 
+
     def iniciar_lectura(self):
+        t = self.translations[self.current_lang]
+
         if not self.ser:
-            QMessageBox.warning(self, "Error", "Debe conectar el equipo primero.")
+            QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
             return
-        
+
         self.run_id = None
         self.local_results = []
         self.start_run_on_server()
@@ -717,9 +753,9 @@ class MainWindow(QMainWindow):
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
-        QMessageBox.information(
-            self, "Lectura iniciada", "El equipo está transmitiendo datos."
-        )
+
+        QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
+
 
     def start_run_on_server(self):
         try:
@@ -740,16 +776,22 @@ class MainWindow(QMainWindow):
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
+            t = self.translations[self.current_lang]
             QMessageBox.information(
-                self, "Lectura detenida", "La lectura de datos ha sido detenida."
+                self,
+                t["title"],
+                t["messages"]["reading_stopped"]
             )
 
     def actualizar_datos(self, te, ts, tc, vel, pot):
-        self.lbl_te.setText(f"Entrada (TE): {te:.2f} °C")
-        self.lbl_ts.setText(f"Salida (TS): {ts:.2f} °C")
-        self.lbl_tc.setText(f"Termopar (TC): {tc:.2f} °C")
-        self.lbl_vel.setText(f"Velocidad del aire: {vel:.2f} m/s")
-        self.lbl_pot.setText(f"Potencia: {pot:.2f} W")
+        t = self.translations[self.current_lang]["labels"]
+
+        self.lbl_te.setText(t["te"].format(val=te))
+        self.lbl_ts.setText(t["ts"].format(val=ts))
+        self.lbl_tc.setText(t["tc"].format(val=tc))
+        self.lbl_vel.setText(t["vel"].format(val=vel))
+        self.lbl_pot.setText(t["pot"].format(val=pot))
+
 
         t = time.time() - self.t0
         self.data_x.append(t)
@@ -785,6 +827,18 @@ class MainWindow(QMainWindow):
                     "Power": pot
                 }
             })
+
+    def actualizar_fan(self, value):
+        """Actualiza el texto del ventilador según el idioma activo."""
+        t = self.translations[self.current_lang]
+        percent = int(value / 2.55)   # convierte 0–255 a 0–100%
+        self.lbl_fan.setText(t["fan"].format(val=percent))
+
+    def actualizar_heat(self, value):
+        """Actualiza el texto del calefactor según el idioma activo."""
+        t = self.translations[self.current_lang]
+        percent = int(value / 2.55)
+        self.lbl_heat.setText(t["heater"].format(val=percent))
 
 
     def toggle_curve_visibility(self):
