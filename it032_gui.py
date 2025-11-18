@@ -175,6 +175,10 @@ class MainWindow(QMainWindow):
         self.lbl_fan.setMinimumWidth(120)
         self.lbl_fan.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        self.timer_fan = QTimer()
+        self.timer_fan.setSingleShot(True)
+        self.timer_fan.timeout.connect(self.enviar_fan_real)
+
         fan_col = QWidget()
         fan_layout = QVBoxLayout(fan_col)
         fan_layout.addWidget(self.dial_fan, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -189,6 +193,10 @@ class MainWindow(QMainWindow):
         self.lbl_heat = QLabel(t["heater"].format(val=0))
         self.lbl_heat.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_heat.setMinimumWidth(120)
+
+        self.timer_heat = QTimer()
+        self.timer_heat.setSingleShot(True)
+        self.timer_heat.timeout.connect(self.enviar_heat_real)
 
         heat_col = QWidget()
         heat_layout = QVBoxLayout(heat_col)
@@ -369,6 +377,13 @@ class MainWindow(QMainWindow):
 
         self.btn_language.setIconSize(QSize(24, 24))
 
+        self.btn_limpiar = QPushButton(
+            t["clear_table"] if "clear_table" in t else "Limpiar tabla"
+        )
+        self.btn_limpiar.setIcon(QIcon("icons/clear.png"))
+        self.btn_limpiar.setFixedWidth(160)
+        self.btn_limpiar.clicked.connect(self.limpiar_tabla)
+
         # Menú de idiomas basado en JSON
         self.menu_language = QMenu(self)
 
@@ -391,6 +406,7 @@ class MainWindow(QMainWindow):
             self.btn_detener,
             self.btn_guardar,
             self.btn_export,
+            self.btn_limpiar,
         ]:
             b.setFixedHeight(32)
             b.setFixedWidth(180)
@@ -458,6 +474,7 @@ class MainWindow(QMainWindow):
             self.btn_detener,
             self.btn_guardar,
             self.btn_export,
+            self.btn_limpiar,
         ]:
             botones_layout.addWidget(b)
         botones_layout.addStretch()
@@ -557,6 +574,59 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             print(f"❌ Error consultando API: {e}")
+
+    def limpiar_tabla(self):
+        """Pregunta antes de limpiar la tabla"""
+
+        t = self.translations[self.current_lang]["dialogs_clear"]
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle(t["title"])
+        msg.setText(t["message"])
+        msg.setIcon(QMessageBox.Icon.Warning)
+
+        btn_yes = msg.addButton(t["yes"], QMessageBox.ButtonRole.YesRole)
+        btn_no = msg.addButton(t["no"], QMessageBox.ButtonRole.NoRole)
+
+        msg.exec()
+
+        if msg.clickedButton() != btn_yes:
+            return  # ❌ Cancelado
+
+        print("🧹 Limpiando tabla…")
+
+        # Si NO hay run activa o no hay datos → solo limpiar la UI
+        if not getattr(self, "run_id", None) or not getattr(self, "data_records", []):
+            self.table.setRowCount(0)
+            self.data_records = []
+            if hasattr(self, "local_results"):
+                self.local_results = []
+            return
+
+        # SI hay run activa + datos → enviar a API antes de limpiar
+        try:
+            total = len(self.local_results)
+            print(f"📡 Enviando {total} resultados al servidor antes de limpiar...")
+
+            payload = {"run_id": self.run_id, "results": self.local_results}
+            response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
+
+            if response.status_code == 201:
+                print("✅ Resultados enviados correctamente al limpiar tabla")
+                requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
+                print("🧾 Run cerrada correctamente.")
+            else:
+                print("⚠️ Error al enviar resultados:", response.text)
+
+        except Exception as e:
+            print("❌ Error al enviar datos:", e)
+
+        # LIMPIAR
+        self.table.setRowCount(0)
+        self.data_records = []
+        self.local_results = []
+        self.run_id = None
+        print("🧹 Tabla limpiada y RUN reiniciada")
 
     # =======================================================
     # FUNCIONES DE GUARDADO Y EXPORTACIÓN
@@ -740,6 +810,7 @@ class MainWindow(QMainWindow):
         self.btn_guardar.setText(t["save"])
         self.btn_export.setText(t["export"])
         self.btn_language.setText(t["language_button"])
+        self.btn_limpiar.setText(t["clear_table"])
 
         # --- Controles (ventilador y calefactor) ---
         fan_value = int(self.dial_fan.value() / 2.55)
@@ -914,16 +985,56 @@ class MainWindow(QMainWindow):
         #     self.buffer_results.clear()
 
     def actualizar_fan(self, value):
-        """Actualiza el texto del ventilador según el idioma activo."""
         t = self.translations[self.current_lang]
-        percent = int(value / 2.55)  # convierte 0–255 a 0–100%
+        percent = int(value / 2.55)
         self.lbl_fan.setText(t["fan"].format(val=percent))
 
+        # Guardar el último valor movido
+        self._fan_pending_value = value
+
+        # Reiniciar el timer (espera 120 ms)
+        self.timer_fan.start(120)
+
     def actualizar_heat(self, value):
-        """Actualiza el texto del calefactor según el idioma activo."""
         t = self.translations[self.current_lang]
         percent = int(value / 2.55)
         self.lbl_heat.setText(t["heater"].format(val=percent))
+
+        self._heat_pending_value = value
+        self.timer_heat.start(120)
+
+    def enviar_fan_real(self):
+        if not self.ser:
+            return
+
+        value = getattr(self, "_fan_pending_value", None)
+        if value is None:
+            return
+
+        # Formato EXACTO para Arduino
+        cmd = f"FAN{value:03d}\n"
+
+        try:
+            self.ser.write(cmd.encode())
+            print(f"[TX] {cmd.strip()}")
+        except Exception as e:
+            print("Error enviando FAN:", e)
+
+    def enviar_heat_real(self):
+        if not self.ser:
+            return
+
+        value = getattr(self, "_heat_pending_value", None)
+        if value is None:
+            return
+
+        cmd = f"HEAT{value:03d}\n"
+
+        try:
+            self.ser.write(cmd.encode())
+            print(f"[TX] {cmd.strip()}")
+        except Exception as e:
+            print("Error enviando HEAT:", e)
 
     def toggle_curve_visibility(self):
         self.curve_te.setVisible(self.chk_te.isChecked())
@@ -957,6 +1068,22 @@ class MainWindow(QMainWindow):
     # CIERRE DE PROGRAMA (al pulsar la X)
     # =======================================================
     def closeEvent(self, event):
+        t = self.translations[self.current_lang]["dialogs_close"]
+
+        # ===============================================
+        # 🔒 SAFETY CHECK: FAN y HEAT deben estar en 0
+        # ===============================================
+        fan_value = self.dial_fan.value()
+        heat_value = self.slider_heat.value()
+
+        if fan_value != 0 or heat_value != 0:
+            QMessageBox.warning(self, t["safety_title"], t["safety_message"])
+            event.ignore()
+            return
+
+        # ===============================================
+        #  SI LOS DOS SON 0 → continuar cierre normal
+        # ===============================================
 
         # cerrar hilo y puerto normalmente
         if self.reader_thread:

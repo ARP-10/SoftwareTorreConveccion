@@ -5,7 +5,7 @@
     "lang_es": "Español",
     "title": "IT 03.2 - Convección Natural y Forzada (DIKOIN)",
     "measurements": "Medidas en tiempo real",
-    "control": "Control del equipo",
+    "control": "Control",
     "graph": "Gráfica en tiempo real",
     "results": "Resultados de la práctica",
     "labels": {
@@ -65,7 +65,15 @@
       "confirm_title": "Confirmar salida",
       "confirm_message": "Hay datos registrados en la tabla que podrían no haberse exportado.\n\n¿Estás seguro de que deseas salir?\nSe perderán los datos no exportados al Excel."
     },
-    "save_error": "No se pudo guardar el dato."
+    "save_error": "No se pudo guardar el dato.",
+    "clear_table": "Limpiar tabla",
+    "dialogs_clear": {
+      "title": "Confirmar limpieza",
+      "message": "¿Realmente desea borrar todos los datos de la tabla?",
+      "yes": "Sí, borrar",
+      "no": "Cancelar"
+    }
+
   },
   "en": {
     "lang_en": "English",
@@ -73,7 +81,7 @@
     "language_button": "Language",
     "title": "IT 03.2 - Natural and Forced Convection (DIKOIN)",
     "measurements": "Real-time measurements",
-    "control": "Equipment Control",
+    "control": "Control",
     "graph": "Real-Time Graph",
     "results": "Experiment Results",
     "labels": {
@@ -133,8 +141,14 @@
       "confirm_title": "Confirm exit",
       "confirm_message": "There are data records in the table that might not have been exported.\n\nAre you sure you want to exit?\nUnsaved data will be lost."
     },
-    "save_error": "Could not save the data."
-
+    "save_error": "Could not save the data.",
+    "clear_table": "Clear Table",
+    "dialogs_clear": {
+      "title": "Confirm clear",
+      "message": "Do you really want to delete all table data?",
+      "yes": "Yes, clear",
+      "no": "Cancel"
+    }
 
   }
 }
