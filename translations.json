@@ -93,7 +93,7 @@
       "TO (°C)",
       "TC (°C)",
       "Vel (m/s)",
-      "Pot (W)"
+      "Pow (W)"
     ],
     "connect": "Connect",
     "start": "Start",

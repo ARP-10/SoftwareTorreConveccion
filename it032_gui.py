@@ -38,7 +38,8 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor
 import core
 
-API_BASE_URL = "http://127.0.0.1:8000/"  # cambia por tu IP si no está local
+API_BASE_URL = "http://127.0.0.1:8000/api"  # cambia por tu IP si no está local
+
 
 def apply_shadow(widget, blur=40, x=0, y=12, alpha=180):
     shadow = QGraphicsDropShadowEffect()
@@ -55,12 +56,11 @@ def create_card(inner_widget):
     card.setObjectName("card")
 
     lay = QVBoxLayout(card)
-    lay.setContentsMargins(18, 18, 18, 18) 
+    lay.setContentsMargins(18, 18, 18, 18)
     lay.addWidget(inner_widget)
 
     apply_shadow(card, blur=60, y=2, alpha=50)
     return card
-
 
 
 # =======================================================
@@ -84,11 +84,13 @@ class ReaderThread(QThread):
             te, ts, tc, vel, pot, serial_number = valores
 
             # Solo corregimos los 5 valores numéricos
-            corregidos = [te - self.offsets[0],
-                        ts - self.offsets[1],
-                        tc - self.offsets[2],
-                        vel - self.offsets[3],
-                        pot - self.offsets[4]]
+            corregidos = [
+                te - self.offsets[0],
+                ts - self.offsets[1],
+                tc - self.offsets[2],
+                vel - self.offsets[3],
+                pot - self.offsets[4],
+            ]
 
             te, ts, tc, vel, pot = corregidos
 
@@ -98,7 +100,6 @@ class ReaderThread(QThread):
                 self.printed_serial = True
 
             self.new_data.emit(te, ts, tc, vel, pot, serial_number)
-
 
     def stop(self):
         self._running = False
@@ -132,9 +133,6 @@ class MainWindow(QMainWindow):
         self.reader_thread = None
         self.data_records = []
 
-        
-
-
         # =======================================================
         # 📊 MEDIDAS EN TIEMPO REAL
         # =======================================================
@@ -159,8 +157,6 @@ class MainWindow(QMainWindow):
 
         # --- card ---
         self.card_lecturas = create_card(self.group_lecturas)
-
-
 
         # =======================================================
         # ⚙️ CONTROL DEL EQUIPO
@@ -231,28 +227,31 @@ class MainWindow(QMainWindow):
         legend_labels = t["legend_labels"]
 
         self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[0])
+            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[0]
+        )
         self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[1])
+            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[1]
+        )
         self.curve_tc = self.plot_widget.plot(
-            pen=pg.mkPen("#27AE60", width=2), name=legend_labels[2])
+            pen=pg.mkPen("#27AE60", width=2), name=legend_labels[2]
+        )
         self.curve_vel = self.plot_widget.plot(
             pen=pg.mkPen("#F39C12", width=2, style=Qt.PenStyle.DotLine),
-            name=legend_labels[3])
+            name=legend_labels[3],
+        )
         self.curve_pot = self.plot_widget.plot(
             pen=pg.mkPen("#8E44AD", width=2, style=Qt.PenStyle.DashLine),
-            name=legend_labels[4])
+            name=legend_labels[4],
+        )
 
         # === Función auxiliar para líneas de colores ===
         def color_box(color, line_style="solid"):
             frame = QFrame()
             frame.setFixedSize(30, 3)
 
-            border_style = {
-                "solid": "solid",
-                "dot": "dotted",
-                "dash": "dashed"
-            }.get(line_style, "solid")
+            border_style = {"solid": "solid", "dot": "dotted", "dash": "dashed"}.get(
+                line_style, "solid"
+            )
 
             frame.setStyleSheet(
                 f"""
@@ -283,10 +282,11 @@ class MainWindow(QMainWindow):
         v_legend.setContentsMargins(0, 0, 0, 0)
 
         for color, style, chk in zip(
-                ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
-                ["solid", "solid", "solid", "dot", "dash"],
-                [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot]):
-            
+            ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
+            ["solid", "solid", "solid", "dot", "dash"],
+            [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
+        ):
+
             row = QHBoxLayout()
             row.setSpacing(5)
             row.setContentsMargins(0, 0, 0, 0)
@@ -306,7 +306,6 @@ class MainWindow(QMainWindow):
 
         h_graf.addWidget(self.plot_widget, stretch=12)
         h_graf.addWidget(legend_widget, stretch=1)
-
 
         self.group_grafica.setLayout(h_graf)
 
@@ -358,13 +357,14 @@ class MainWindow(QMainWindow):
         self.btn_guardar = QPushButton(t["save"])
         self.btn_guardar.setIcon(QIcon("icons/save.png"))
 
-
-        # Botón de idioma 
+        # Botón de idioma
         self.btn_language = QToolButton()
         self.btn_language.setObjectName("btn_language")
         self.btn_language.setText(t["language_button"])
         self.btn_language.setIcon(QIcon("icons/language.png"))
-        self.btn_language.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_language.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
         self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
         self.btn_language.setIconSize(QSize(24, 24))
@@ -380,7 +380,6 @@ class MainWindow(QMainWindow):
 
         self.btn_language.setMenu(self.menu_language)
         self.btn_language.setFixedHeight(32)
-
 
         # =======================================================
         # BOTONES GENERALES
@@ -399,14 +398,13 @@ class MainWindow(QMainWindow):
             h_botones.addWidget(b)
         h_botones.addStretch()
 
-
         # =======================================================
         # LAYOUT GENERAL
         # =======================================================
 
         # === Barra superior con el botón de idioma ===
         h_topbar = QHBoxLayout()
-        h_topbar.setContentsMargins(22, 6, 0, 0) 
+        h_topbar.setContentsMargins(22, 6, 0, 0)
         h_topbar.addWidget(self.btn_language, alignment=Qt.AlignmentFlag.AlignLeft)
         h_topbar.addStretch()
 
@@ -434,16 +432,13 @@ class MainWindow(QMainWindow):
         grafica_container = QWidget()
         grafica_container_layout = QVBoxLayout(grafica_container)
         grafica_container_layout.setContentsMargins(0, 0, 0, 0)
-        grafica_container_layout.setSpacing(2) 
+        grafica_container_layout.setSpacing(2)
 
         grafica_container.setMinimumHeight(450)
 
         self.group_grafica.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-
-
 
         # 📉 Gráfica (dejamos su margen natural)
         grafica_container_layout.addWidget(self.card_grafica)
@@ -474,14 +469,14 @@ class MainWindow(QMainWindow):
         botones_outer_layout.setSpacing(0)
 
         # Añadimos los botones centrados dentro de la zona del plot (ignorando la leyenda)
-        botones_outer_layout.addWidget(botones_container, alignment=Qt.AlignmentFlag.AlignHCenter)
+        botones_outer_layout.addWidget(
+            botones_container, alignment=Qt.AlignmentFlag.AlignHCenter
+        )
 
         grafica_container_layout.addWidget(botones_outer)
 
-
         # Añadir el bloque completo al layout principal de la izquierda
         left_layout.addWidget(grafica_container, stretch=1)
-
 
         # --- Envolver la parte izquierda en un contenedor fijo
         left_widget = QWidget()
@@ -504,13 +499,11 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(left_widget, stretch=6)
         main_layout.addWidget(self.card_tabla, stretch=4)
 
-
         # Asegurar proporciones fijas
         main_layout.setStretch(0, 6)
         main_layout.setStretch(1, 4)
         main_layout.setContentsMargins(6, 6, 6, 6)
         main_layout.setSpacing(6)
-
 
         # --- Contenedor principal ---
         container = QWidget()
@@ -561,19 +554,19 @@ class MainWindow(QMainWindow):
                 print(f"✅ Máquina encontrada en API: machine_id = {self.machine_id}")
             else:
                 print("❌ Serial no registrado en API.")
-                QMessageBox.warning(
-                    self,
-                    "Error",
-                    f"La máquina con serial {serial} no está registrada en la API."
-                )
+
         except Exception as e:
             print(f"❌ Error consultando API: {e}")
-
 
     # =======================================================
     # FUNCIONES DE GUARDADO Y EXPORTACIÓN
     # =======================================================
     def guardar_dato(self):
+        # Crear la run solo cuando hay el PRIMER dato
+        if not getattr(self, "run_id", None):
+            print("⏳ No hay run activa, creando run...")
+            self.start_run_on_server()
+
         try:
             now = datetime.now()
             fecha = now.strftime("%d/%m/%Y")
@@ -593,12 +586,29 @@ class MainWindow(QMainWindow):
             self.table.setItem(i, 2, QTableWidgetItem(hora))
             for j, val in enumerate([te, ts, tc, vel, pot]):
                 self.table.setItem(i, j + 3, QTableWidgetItem(f"{val:.2f}"))
+
+            if not hasattr(self, "local_results"):
+                self.local_results = []
+
+            self.local_results.append(
+                {
+                    "timestamp": now.isoformat(),
+                    "metrics": {
+                        "TE": te,
+                        "TS": ts,
+                        "TC": tc,
+                        "Velocity": vel,
+                        "Power": pot,
+                    },
+                }
+            )
+
+            print("💾 Guardado manual:", self.local_results[-1])
+
         except Exception as e:
             t = self.translations[self.current_lang]
             msg = t["messages"]["save_error"]
             QMessageBox.warning(self, t["results"], msg)
-
-
 
     def export_excel(self):
         # Preguntar formato al usuario
@@ -606,18 +616,18 @@ class MainWindow(QMainWindow):
 
         msg = QMessageBox(self)
         msg.setWindowTitle(t["export"])
-        msg.setText("¿En qué formato deseas exportar?" if self.current_lang == "es"
-                    else "Which format do you want to export?")
+        msg.setText(
+            "¿En qué formato deseas exportar?"
+            if self.current_lang == "es"
+            else "Which format do you want to export?"
+        )
         msg.setIcon(QMessageBox.Icon.Question)
 
         btn_xls = msg.addButton("Excel (.xlsx)", QMessageBox.ButtonRole.YesRole)
         btn_csv = msg.addButton("CSV (.csv)", QMessageBox.ButtonRole.NoRole)
         btn_cancel = msg.addButton(
-            t["messages"]["export_cancel"],
-            QMessageBox.ButtonRole.RejectRole
+            t["messages"]["export_cancel"], QMessageBox.ButtonRole.RejectRole
         )
-
-
 
         msg.exec()
 
@@ -651,10 +661,26 @@ class MainWindow(QMainWindow):
 
         # Construir DataFrame según el idioma
         if self.current_lang == "es":
-            columnas = ["Fecha", "Hora", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"]
+            columnas = [
+                "Fecha",
+                "Hora",
+                "TE (°C)",
+                "TS (°C)",
+                "TC (°C)",
+                "Vel (m/s)",
+                "Pot (W)",
+            ]
             mensaje_ok = "Archivo exportado correctamente."
         else:
-            columnas = ["Date", "Time", "TE (°C)", "TS (°C)", "TC (°C)", "Velocity (m/s)", "Power (W)"]
+            columnas = [
+                "Date",
+                "Time",
+                "TE (°C)",
+                "TS (°C)",
+                "TC (°C)",
+                "Velocity (m/s)",
+                "Power (W)",
+            ]
             mensaje_ok = "File exported successfully."
 
         df = pd.DataFrame(self.data_records, columns=columnas)
@@ -692,9 +718,7 @@ class MainWindow(QMainWindow):
         # --- Ventana principal ---
         self.setWindowTitle(t["title"])
 
-        
         self.msg = t["messages"]
-
 
         # --- Grupos ---
         self.group_lecturas.setTitle(t["measurements"])
@@ -756,22 +780,22 @@ class MainWindow(QMainWindow):
     # FUNCIONES PRINCIPALES
     # =======================================================
     def conectar(self):
-        t = self.translations[self.current_lang]  
+        t = self.translations[self.current_lang]
         port = core.detectar_puerto()
+
         if not port:
-            QMessageBox.warning(
-                self,
-                t["title"],                    
-                t["messages"]["connection_failed"]
-            )
+            QMessageBox.warning(self, t["title"], t["messages"]["connection_failed"])
             return
 
+        # Abrir puerto
         self.ser = core.serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
+
         QMessageBox.information(
-            self,
-            t["title"],
-            t["messages"]["connected"].format(port=port)
+            self, t["title"], t["messages"]["connected"].format(port=port)
         )
+
+        # ⬇️⬇️ AUTO-START LECTURA AQUÍ ⬇️⬇️
+        self.iniciar_lectura()
 
     def iniciar_lectura(self):
         t = self.translations[self.current_lang]
@@ -780,16 +804,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
             return
 
-        self.run_id = None
-        self.local_results = []
-        self.start_run_on_server()
-
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
 
         QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
-
 
     def start_run_on_server(self):
         if not hasattr(self, "machine_id"):
@@ -799,32 +818,34 @@ class MainWindow(QMainWindow):
         try:
             response = requests.post(
                 f"{API_BASE_URL}/runs/start",
-                json={
-                    "machine_id": self.machine_id,
-                    "app_version": "1.0.0"
-                },
+                json={"machine_id": self.machine_id, "app_version": "1.0.0"},
             )
             if response.status_code == 201:
+
                 self.run_id = response.json().get("run_id")
                 print(f"🚀 Run iniciada: {self.run_id}")
+
+                if hasattr(self, "buffer_results") and self.buffer_results:
+                    if not hasattr(self, "local_results"):
+                        self.local_results = []
+                    self.local_results.extend(self.buffer_results)
+                    print(
+                        f"📦 {len(self.buffer_results)} valores movidos del buffer → local_results"
+                    )
+                    self.buffer_results.clear()
+
             else:
                 print("⚠️ Error API:", response.text)
 
         except Exception as e:
             print("❌ Error API:", e)
 
-
-
     def detener_lectura(self):
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
             t = self.translations[self.current_lang]
-            QMessageBox.information(
-                self,
-                t["title"],
-                t["messages"]["reading_stopped"]
-            )
+            QMessageBox.information(self, t["title"], t["messages"]["reading_stopped"])
 
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
         # Detectamos el número de serie SOLO una vez
@@ -840,8 +861,10 @@ class MainWindow(QMainWindow):
         self.lbl_ts.setText(t["ts"].format(val=ts))
         self.lbl_tc.setText(t["tc"].format(val=tc))
         self.lbl_vel.setText(t["vel"].format(val=vel))
-        self.lbl_pot.setText(t["pot"].format(val=pot))
+        if pot < 5:
+            pot = 0
 
+        self.lbl_pot.setText(t["pot"].format(val=pot))
 
         t = time.time() - self.t0
         self.data_x.append(t)
@@ -863,25 +886,37 @@ class MainWindow(QMainWindow):
         self.curve_vel.setData(self.data_x, self.data_vel)
         self.curve_pot.setData(self.data_x, self.data_pot)
 
-        # Guardar lectura localmente para envío posterior
-        if hasattr(self, "run_id") and self.run_id:
-            if not hasattr(self, "local_results"):
-                self.local_results = []
-            self.local_results.append({
-                "timestamp": datetime.utcnow().isoformat(),
-                "metrics": {
-                    "TE": te,
-                    "TS": ts,
-                    "TC": tc,
-                    "Velocity": vel,
-                    "Power": pot
-                }
-            })
+        # # Guardar lectura localmente para envío posterior
+        # if not hasattr(self, "buffer_results"):
+        #     self.buffer_results = []
+
+        # # Solo un append (no duplicado)
+        # self.buffer_results.append(
+        #     {
+        #         "timestamp": datetime.utcnow().isoformat(),
+        #         "metrics": {
+        #             "TE": te,
+        #             "TS": ts,
+        #             "TC": tc,
+        #             "Velocity": vel,
+        #             "Power": pot,
+        #         },
+        #     }
+        # )
+
+        # Si ya existe run, mover buffer → local
+        # if hasattr(self, "run_id") and self.run_id:
+        #     if not hasattr(self, "local_results"):
+        #         self.local_results = []
+
+        #     # MOVER buffer → local
+        #     self.local_results.extend(self.buffer_results)
+        #     self.buffer_results.clear()
 
     def actualizar_fan(self, value):
         """Actualiza el texto del ventilador según el idioma activo."""
         t = self.translations[self.current_lang]
-        percent = int(value / 2.55)   # convierte 0–255 a 0–100%
+        percent = int(value / 2.55)  # convierte 0–255 a 0–100%
         self.lbl_fan.setText(t["fan"].format(val=percent))
 
     def actualizar_heat(self, value):
@@ -889,7 +924,6 @@ class MainWindow(QMainWindow):
         t = self.translations[self.current_lang]
         percent = int(value / 2.55)
         self.lbl_heat.setText(t["heater"].format(val=percent))
-
 
     def toggle_curve_visibility(self):
         self.curve_te.setVisible(self.chk_te.isChecked())
@@ -923,78 +957,39 @@ class MainWindow(QMainWindow):
     # CIERRE DE PROGRAMA (al pulsar la X)
     # =======================================================
     def closeEvent(self, event):
-        t = self.translations[self.current_lang]["dialogs_close"]
 
-        # --- 1️⃣ Verificar si ventilador o calefactor NO están a cero ---
-        fan_value = self.dial_fan.value()
-        heat_value = self.slider_heat.value()
-        if fan_value > 0 or heat_value > 0:
-            QMessageBox.warning(self, t["safety_title"], t["safety_message"])
-            event.ignore()
-            return
-
-        # --- 2️⃣ Verificar si hay registros sin exportar ---
-        if len(self.data_records) > 0:
-            msg = QMessageBox(self)
-            msg.setWindowTitle(t["confirm_title"])
-            msg.setText(t["confirm_message"])
-            msg.setIcon(QMessageBox.Icon.Question)
-
-            # Crear botones personalizados
-            btn_yes = msg.addButton(t["yes"], QMessageBox.ButtonRole.YesRole)
-            btn_no = msg.addButton(t["no"], QMessageBox.ButtonRole.NoRole)
-
-            msg.setDefaultButton(btn_no)
-            msg.exec()
-
-            if msg.clickedButton() == btn_no:
-                event.ignore()
-                return
-
-        # --- 3️⃣ Cerrar correctamente si pasa todas las verificaciones ---
+        # cerrar hilo y puerto normalmente
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
+
         if self.ser and self.ser.is_open:
             self.ser.close()
-            time.sleep(1)
 
-        # Enviar resultados acumulados al servidor al cerrar
-        if hasattr(self, "run_id") and self.run_id and hasattr(self, "local_results") and self.local_results:
-            if (
-                hasattr(self, "run_id")
-                and self.run_id
-                and hasattr(self, "local_results")
-                and self.local_results
-            ):
-                try:
-                    payload = {"run_id": self.run_id, "results": self.local_results}
-                    print(
-                        f"📡 Enviando {len(self.local_results)} resultados al servidor..."
-                    )
-                    response = requests.post(
-                        f"{API_BASE_URL}/results/bulk", json=payload, timeout=10
-                    )
-                    if response.status_code == 201:
-                        print("✅ Resultados enviados correctamente.")
-                    else:
-                        print(
-                            f"⚠️ Error al enviar resultados: {response.status_code} {response.text}"
-                        )
-                except Exception as e:
-                    print(f"❌ Falló el envío a la API: {e}")
+        # NO enviar ni cerrar runs si no hay datos
+        if not getattr(self, "run_id", None) or not getattr(self, "local_results", []):
+            print("ℹ️ No hay datos ni run, no se envía nada.")
+            return event.accept()
 
-        # Cerrar el run
-        if hasattr(self, "run_id") and self.run_id:
-            try:
+        # ENVIAR resultados
+        try:
+            payload = {"run_id": self.run_id, "results": self.local_results}
+            print(f"📡 Enviando {len(self.local_results)} resultados al servidor...")
+            response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
+
+            if response.status_code == 201:
+                print("✅ Resultados enviados correctamente.")
+                self.local_results = []
                 requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
-                print("🧾 Run cerrado correctamente en el servidor.")
-            except Exception as e:
-                print(f"⚠️ No se pudo cerrar el run: {e}")
-                
-                
-    
+                print("🧾 Run cerrada correctamente.")
+            else:
+                print("⚠️ Error al enviar results:", response.text)
+
+        except Exception as e:
+            print(f"❌ Error al enviar datos: {e}")
+
         event.accept()
+
 
 # =======================================================
 # Ventana de resultados
