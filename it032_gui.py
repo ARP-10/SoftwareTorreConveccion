@@ -399,7 +399,7 @@ class MainWindow(QMainWindow):
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
         top_layout.setSpacing(6)
-        top_layout.setContentsMargins(12, 8, 0, 0)
+        top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.addWidget(self.card_lecturas, stretch=3)  # 🟢 más ancho
         top_layout.addWidget(self.card_control, stretch=3)  # 🔵 un poco más estrecho
 
@@ -412,7 +412,7 @@ class MainWindow(QMainWindow):
         # --- Parte izquierda: bloque principal con top + gráfica + botones
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(4)
+        left_layout.setSpacing(0)
         left_layout.addLayout(h_topbar)
         left_layout.addLayout(top_layout)
 
@@ -420,7 +420,7 @@ class MainWindow(QMainWindow):
         grafica_container = QWidget()
         grafica_container_layout = QVBoxLayout(grafica_container)
         grafica_container_layout.setContentsMargins(0, 0, 0, 0)
-        grafica_container_layout.setSpacing(6) 
+        grafica_container_layout.setSpacing(2) 
 
         grafica_container.setMinimumHeight(450)
 
@@ -680,6 +680,7 @@ class MainWindow(QMainWindow):
         self.btn_detener.setText(t["stop"])
         self.btn_guardar.setText(t["save"])
         self.btn_export.setText(t["export"])
+        self.btn_language.setText(t["language_button"])
 
         # --- Controles (ventilador y calefactor) ---
         fan_value = int(self.dial_fan.value() / 2.55)
