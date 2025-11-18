@@ -59,10 +59,26 @@ class ReaderThread(QThread):
             valores = core.leer_linea(self.ser)
             if not valores:
                 continue
-            corregidos = [v - o for v, o in zip(valores, self.offsets)]
+
+            te, ts, tc, vel, pot, serial_number = valores
+
+            # Solo corregimos los 5 valores numéricos
+            corregidos = [
+                te - self.offsets[0],
+                ts - self.offsets[1],
+                tc - self.offsets[2],
+                vel - self.offsets[3],
+                pot - self.offsets[4],
+            ]
+
             te, ts, tc, vel, pot = corregidos
+
+            # 🚀 Imprimir número de serie solo la primera vez
+            if not hasattr(self, "printed_serial"):
+                print(f"🔑 Número de serie detectado: {serial_number}")
+                self.printed_serial = True
+
             self.new_data.emit(te, ts, tc, vel, pot)
-            time.sleep(core.READ_DELAY)
 
     def stop(self):
         self._running = False
@@ -327,7 +343,7 @@ class MainWindow(QMainWindow):
         legend_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         h_graf = QHBoxLayout()
-        h_graf.setContentsMargins(0, 20, 0, 0)
+        h_graf.setContentsMargins(0, 20, 0, 30)
         h_graf.setSpacing(10)
         h_graf.addWidget(self.plot_widget, stretch=4)
         h_graf.addWidget(legend_widget, alignment=Qt.AlignmentFlag.AlignTop)
@@ -594,44 +610,66 @@ class MainWindow(QMainWindow):
             core.enviar_comando(self.ser, "HEAT", v)
 
     def export_excel(self):
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Guardar Excel" if self.current_lang == "es" else "Save Excel",
-            "",
-            "Excel Files (*.xlsx)",
-        )
-        if path:
-            # Etiquetas de columnas según idioma actual
-            if self.current_lang == "es":
-                columnas = [
-                    "Fecha",
-                    "Hora",
-                    "TE (°C)",
-                    "TS (°C)",
-                    "TC (°C)",
-                    "Vel (m/s)",
-                    "Pot (W)",
-                ]
-                mensaje = "Archivo Excel guardado correctamente."
-                titulo = "Exportación"
-            else:
-                columnas = [
-                    "Date",
-                    "Time",
-                    "TE (°C)",
-                    "TS (°C)",
-                    "TC (°C)",
-                    "Velocity (m/s)",
-                    "Power (W)",
-                ]
-                mensaje = "Excel file saved successfully."
-                titulo = "Export"
+        t = self.translations[self.current_lang]
+        msg_t = t["messages"]
 
-            df = pd.DataFrame(self.data_records, columns=columnas)
-            df.index = df.index + 1
-            df.index.name = "#"
-            df.to_excel(path)
-            QMessageBox.information(self, titulo, mensaje)
+        # Diálogo para elegir formato
+        msg = QMessageBox(self)
+        msg.setWindowTitle(t["export"])
+        msg.setText(msg_t["export_choose_format"])
+        msg.setIcon(QMessageBox.Icon.Question)
+
+        btn_xls = msg.addButton(
+            msg_t["export_format_xlsx"], QMessageBox.ButtonRole.YesRole
+        )
+        btn_csv = msg.addButton(
+            msg_t["export_format_csv"], QMessageBox.ButtonRole.NoRole
+        )
+        btn_cancel = msg.addButton(
+            msg_t["export_cancel"], QMessageBox.ButtonRole.RejectRole
+        )
+
+        msg.exec()
+
+        if msg.clickedButton() == btn_cancel:
+            return
+
+        # Selección según el botón pulsado
+        if msg.clickedButton() == btn_xls:
+            file_filter = "Excel Files (*.xlsx)"
+            default_ext = ".xlsx"
+            export_type = "xlsx"
+        else:
+            file_filter = "CSV Files (*.csv)"
+            default_ext = ".csv"
+            export_type = "csv"
+
+        # Diálogo de guardado
+        path, _ = QFileDialog.getSaveFileName(self, t["export"], "", file_filter)
+
+        if not path:
+            return
+
+        if not path.lower().endswith(default_ext):
+            path += default_ext
+
+        # Columnas ya según idioma
+        columnas = t["table_headers"][1:]
+
+        df = pd.DataFrame(self.data_records, columns=columnas)
+        df.index = df.index + 1
+        df.index.name = "#"
+
+        try:
+            if export_type == "xlsx":
+                df.to_excel(path)
+            else:
+                df.to_csv(path, sep=";", decimal=",", index=True)
+
+            QMessageBox.information(self, t["export"], msg_t["export_success"])
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
 
     # =======================================================
     # CAMBIO DE IDIOMA (desde translations.json)
@@ -765,6 +803,10 @@ class MainWindow(QMainWindow):
             )
 
     def actualizar_datos(self, te, ts, tc, vel, pot):
+        # 🔥 Ajuste solicitado: si la potencia es menor de 5 → mostrar 0
+        if pot < 5:
+            pot = 0
+
         # Guardar valores reales (evitamos parsear textos del GUI)
         self.last_te = te
         self.last_ts = ts

@@ -61,19 +61,16 @@ def leer_linea(ser):
         if len(parts) != 12:
             return None
 
-        # Extraer los 5 valores numéricos en orden correcto:
-        # T.entrada → parts[3]
-        # T.salida  → parts[5]
-        # Termopar  → parts[7]
-        # V.aire    → parts[9]
-        # Potencia  → parts[11]
         try:
+            serial_number = parts[1]  # ⬅️ Número de serie aquí
             te = float(parts[3])
             ts = float(parts[5])
             tc = float(parts[7])
             vel = float(parts[9])
             pot = float(parts[11])
-            return [te, ts, tc, vel, pot]
+
+            return [te, ts, tc, vel, pot, serial_number]
+
         except:
             return None
 
