@@ -39,7 +39,6 @@ from PyQt6.QtGui import QColor
 import core
 
 API_BASE_URL = "http://127.0.0.1:8000/"  # cambia por tu IP si no está local
-MACHINE_ID = 1                              # ID de la máquina IT03.2 registrada
 
 def apply_shadow(widget, blur=40, x=0, y=12, alpha=180):
     shadow = QGraphicsDropShadowEffect()
@@ -68,7 +67,7 @@ def create_card(inner_widget):
 # Lectura de datos del equipo
 # =======================================================
 class ReaderThread(QThread):
-    new_data = pyqtSignal(float, float, float, float, float)
+    new_data = pyqtSignal(float, float, float, float, float, str)
 
     def __init__(self, ser, offsets):
         super().__init__()
@@ -81,10 +80,25 @@ class ReaderThread(QThread):
             valores = core.leer_linea(self.ser)
             if not valores:
                 continue
-            corregidos = [v - o for v, o in zip(valores, self.offsets)]
+
+            te, ts, tc, vel, pot, serial_number = valores
+
+            # Solo corregimos los 5 valores numéricos
+            corregidos = [te - self.offsets[0],
+                        ts - self.offsets[1],
+                        tc - self.offsets[2],
+                        vel - self.offsets[3],
+                        pot - self.offsets[4]]
+
             te, ts, tc, vel, pot = corregidos
-            self.new_data.emit(te, ts, tc, vel, pot)
-            time.sleep(core.READ_DELAY)
+
+            # 🚀 Imprimir número de serie solo la primera vez
+            if not hasattr(self, "printed_serial"):
+                print(f"🔑 Número de serie detectado: {serial_number}")
+                self.printed_serial = True
+
+            self.new_data.emit(te, ts, tc, vel, pot, serial_number)
+
 
     def stop(self):
         self._running = False
@@ -535,6 +549,27 @@ class MainWindow(QMainWindow):
             )
             self.translations = {}
 
+    def verify_machine_with_api(self, serial):
+        print(f"📡 Consultando API por serial {serial}...")
+
+        try:
+            r = requests.get(f"{API_BASE_URL}/machines/by-serial/{serial}")
+
+            if r.status_code == 200:
+                data = r.json()
+                self.machine_id = data["machine_id"]
+                print(f"✅ Máquina encontrada en API: machine_id = {self.machine_id}")
+            else:
+                print("❌ Serial no registrado en API.")
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    f"La máquina con serial {serial} no está registrada en la API."
+                )
+        except Exception as e:
+            print(f"❌ Error consultando API: {e}")
+
+
     # =======================================================
     # FUNCIONES DE GUARDADO Y EXPORTACIÓN
     # =======================================================
@@ -757,18 +792,27 @@ class MainWindow(QMainWindow):
 
 
     def start_run_on_server(self):
+        if not hasattr(self, "machine_id"):
+            print("❌ ERROR: No hay machine_id aún.")
+            return
+
         try:
             response = requests.post(
                 f"{API_BASE_URL}/runs/start",
-                json={"machine_id": MACHINE_ID, "app_version": "1.0.0"},
+                json={
+                    "machine_id": self.machine_id,
+                    "app_version": "1.0.0"
+                },
             )
             if response.status_code == 201:
                 self.run_id = response.json().get("run_id")
-                print(f"✅ Run iniciado en servidor: {self.run_id}")
+                print(f"🚀 Run iniciada: {self.run_id}")
             else:
-                print(f"⚠️ Error al crear run: {response.text}")
+                print("⚠️ Error API:", response.text)
+
         except Exception as e:
-            print(f"❌ Error de conexión a la API: {e}")
+            print("❌ Error API:", e)
+
 
 
     def detener_lectura(self):
@@ -782,7 +826,14 @@ class MainWindow(QMainWindow):
                 t["messages"]["reading_stopped"]
             )
 
-    def actualizar_datos(self, te, ts, tc, vel, pot):
+    def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
+        # Detectamos el número de serie SOLO una vez
+        if not hasattr(self, "serial_number_detected"):
+            self.serial_number_detected = serial_number
+            print(f"🔍 Serial detectado: {serial_number}")
+
+            self.verify_machine_with_api(serial_number)
+
         t = self.translations[self.current_lang]["labels"]
 
         self.lbl_te.setText(t["te"].format(val=te))

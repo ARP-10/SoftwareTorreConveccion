@@ -100,8 +100,6 @@ def main():
     ser = None
     try:
         ser = serial.Serial(port, BAUD, timeout=COM_TIMEOUT)
-        t_read.start()
-        hilo_comandos(ser)
     except KeyboardInterrupt:
         print("\n🟥 Programa interrumpido manualmente.")
     finally:
