@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QToolButton,
     QMenu,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
 from PyQt6.QtGui import QFont, QIcon
 import sys
 import time
@@ -335,9 +335,6 @@ class MainWindow(QMainWindow):
         self.btn_conectar = QPushButton(t["connect"])
         self.btn_conectar.setIcon(QIcon("icons/connect.png"))
 
-        self.btn_calibrar = QPushButton(t["calibrate"])
-        self.btn_calibrar.setIcon(QIcon("icons/calibrate.png"))
-
         self.btn_iniciar = QPushButton(t["start"])
         self.btn_iniciar.setIcon(QIcon("icons/start.png"))
 
@@ -354,7 +351,9 @@ class MainWindow(QMainWindow):
         self.btn_language.setText(t["language_button"])
         self.btn_language.setIcon(QIcon("icons/language.png"))
         self.btn_language.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self.btn_language.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        self.btn_language.setIconSize(QSize(24, 24))
 
         # Menú de idiomas basado en JSON
         self.menu_language = QMenu(self)
@@ -375,7 +374,6 @@ class MainWindow(QMainWindow):
         h_botones = QHBoxLayout()
         for b in [
             self.btn_conectar,
-            self.btn_calibrar,
             self.btn_iniciar,
             self.btn_detener,
             self.btn_guardar,
@@ -394,13 +392,14 @@ class MainWindow(QMainWindow):
 
         # === Barra superior con el botón de idioma ===
         h_topbar = QHBoxLayout()
+        h_topbar.setContentsMargins(22, 6, 0, 0) 
         h_topbar.addWidget(self.btn_language, alignment=Qt.AlignmentFlag.AlignLeft)
         h_topbar.addStretch()
 
         # --- Parte superior: lecturas (izq) y control (der)
         top_layout = QHBoxLayout()
         top_layout.setSpacing(6)
-        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setContentsMargins(12, 8, 0, 0)
         top_layout.addWidget(self.card_lecturas, stretch=3)  # 🟢 más ancho
         top_layout.addWidget(self.card_control, stretch=3)  # 🔵 un poco más estrecho
 
@@ -420,9 +419,8 @@ class MainWindow(QMainWindow):
         # 🔹 Contenedor para gráfica + botones alineados con el área del plot
         grafica_container = QWidget()
         grafica_container_layout = QVBoxLayout(grafica_container)
-        #card_graf_layout.setContentsMargins(2, 2, 2, 2)
-
-        #grafica_container_layout.setSpacing(4)
+        grafica_container_layout.setContentsMargins(0, 0, 0, 0)
+        grafica_container_layout.setSpacing(6) 
 
         grafica_container.setMinimumHeight(450)
 
@@ -447,7 +445,6 @@ class MainWindow(QMainWindow):
         botones_layout.addStretch(1)
         for b in [
             self.btn_conectar,
-            self.btn_calibrar,
             self.btn_iniciar,
             self.btn_detener,
             self.btn_guardar,
@@ -510,7 +507,6 @@ class MainWindow(QMainWindow):
         # EVENTOS
         # =======================================================
         self.btn_conectar.clicked.connect(self.conectar)
-        self.btn_calibrar.clicked.connect(self.calibrar)
         self.btn_iniciar.clicked.connect(self.iniciar_lectura)
         self.btn_detener.clicked.connect(self.detener_lectura)
         self.btn_guardar.clicked.connect(self.guardar_dato)
@@ -570,44 +566,77 @@ class MainWindow(QMainWindow):
 
 
     def export_excel(self):
+        # Preguntar formato al usuario
+        t = self.translations[self.current_lang]
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle(t["export"])
+        msg.setText("¿En qué formato deseas exportar?" if self.current_lang == "es"
+                    else "Which format do you want to export?")
+        msg.setIcon(QMessageBox.Icon.Question)
+
+        btn_xls = msg.addButton("Excel (.xlsx)", QMessageBox.ButtonRole.YesRole)
+        btn_csv = msg.addButton("CSV (.csv)", QMessageBox.ButtonRole.NoRole)
+        btn_cancel = msg.addButton(
+            t["messages"]["export_cancel"],
+            QMessageBox.ButtonRole.RejectRole
+        )
+
+
+
+        msg.exec()
+
+        if msg.clickedButton() == btn_cancel:
+            return
+
+        # Seleccionar extensión y filtro según formato elegido
+        if msg.clickedButton() == btn_xls:
+            file_filter = "Excel Files (*.xlsx)"
+            default_ext = ".xlsx"
+            export_type = "xlsx"
+        else:
+            file_filter = "CSV Files (*.csv)"
+            default_ext = ".csv"
+            export_type = "csv"
+
+        # Diálogo de guardado
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Guardar Excel" if self.current_lang == "es" else "Save Excel",
+            t["export"],
             "",
-            "Excel Files (*.xlsx)",
+            file_filter,
         )
-        if path:
-            # Etiquetas de columnas según idioma actual
-            if self.current_lang == "es":
-                columnas = [
-                    "Fecha",
-                    "Hora",
-                    "TE (°C)",
-                    "TS (°C)",
-                    "TC (°C)",
-                    "Vel (m/s)",
-                    "Pot (W)",
-                ]
-                mensaje = "Archivo Excel guardado correctamente."
-                titulo = "Exportación"
-            else:
-                columnas = [
-                    "Date",
-                    "Time",
-                    "TE (°C)",
-                    "TS (°C)",
-                    "TC (°C)",
-                    "Velocity (m/s)",
-                    "Power (W)",
-                ]
-                mensaje = "Excel file saved successfully."
-                titulo = "Export"
 
-            df = pd.DataFrame(self.data_records, columns=columnas)
-            df.index = df.index + 1
-            df.index.name = "#"
-            df.to_excel(path)
-            QMessageBox.information(self, titulo, mensaje)
+        if not path:
+            return
+
+        # Asegurar extensión correcta
+        if not path.lower().endswith(default_ext):
+            path += default_ext
+
+        # Construir DataFrame según el idioma
+        if self.current_lang == "es":
+            columnas = ["Fecha", "Hora", "TE (°C)", "TS (°C)", "TC (°C)", "Vel (m/s)", "Pot (W)"]
+            mensaje_ok = "Archivo exportado correctamente."
+        else:
+            columnas = ["Date", "Time", "TE (°C)", "TS (°C)", "TC (°C)", "Velocity (m/s)", "Power (W)"]
+            mensaje_ok = "File exported successfully."
+
+        df = pd.DataFrame(self.data_records, columns=columnas)
+        df.index = df.index + 1
+        df.index.name = "#"
+
+        # Guardado según formato
+        try:
+            if export_type == "xlsx":
+                df.to_excel(path)
+            else:
+                df.to_csv(path, sep=";", decimal=",", index=True)
+
+            QMessageBox.information(self, t["export"], mensaje_ok)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
 
     # =======================================================
     # CAMBIO DE IDIOMA (desde translations.json)
@@ -647,7 +676,6 @@ class MainWindow(QMainWindow):
 
         # --- Botones ---
         self.btn_conectar.setText(t["connect"])
-        self.btn_calibrar.setText(t["calibrate"])
         self.btn_iniciar.setText(t["start"])
         self.btn_detener.setText(t["stop"])
         self.btn_guardar.setText(t["save"])
@@ -708,20 +736,6 @@ class MainWindow(QMainWindow):
             t["title"],
             t["messages"]["connected"].format(port=port)
         )
-
-    def calibrar(self):
-        t = self.translations[self.current_lang]
-
-        if not self.ser:
-            QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
-            return
-        self.offsets = core.calibrar_sensores(self.ser)
-        QMessageBox.information(
-            self,
-            t["title"],
-            t["messages"]["calibration_done"]
-        )
-
 
     def iniciar_lectura(self):
         t = self.translations[self.current_lang]

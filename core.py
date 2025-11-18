@@ -7,7 +7,6 @@ import sys
 BAUD = 9600
 COM_TIMEOUT = 1.0
 READ_DELAY = 0.5
-CALIBRATION_SAMPLES = 10
 
 
 def detectar_puerto():

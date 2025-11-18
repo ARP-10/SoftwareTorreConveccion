@@ -149,13 +149,26 @@ QPushButton:pressed {
    ============================================================ */
 
 QToolButton#btn_language {
-    background-color: #0077b6;
-    color: #FFFFFF;
-    border: none;
     border-radius: 14px;
     padding: 6px 14px;
     font-weight: 600;
     font-size: 11pt;
+    background-color: transparent; 
+    color: #0077b6;                 
+    border: 2px solid #0077b6;     
+    padding: 4px 12px;    
+}
+
+QToolButton#btn_language:hover {
+    background-color: rgba(0, 119, 182, 0.10);  
+    border-color: #0096c7;                     
+    color: #0096c7;    
+}
+
+QToolButton#btn_language:pressed {
+    background-color: rgba(0, 119, 182, 0.10);
+    border: 2px solid #005f87;
+    color: #005f87;
 }
 
 /* Menú */
