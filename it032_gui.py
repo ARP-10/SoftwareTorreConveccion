@@ -22,6 +22,8 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QToolButton,
     QMenu,
+    QDialog,
+    QLabel,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
 from PyQt6.QtGui import QFont, QIcon
@@ -29,16 +31,53 @@ import sys
 import time
 import pyqtgraph as pg
 import pandas as pd
+from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtGui import QIcon
 from datetime import datetime
 import json
-from PyQt6.QtSvgWidgets import QSvgWidget
 import requests
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor
 import core
 
 API_BASE_URL = "https://iotnexus.dikoin.com/api"  # cambia por tu IP si no está local
+
+
+class AlertDialog(QDialog):
+    def __init__(self, parent, title, text):
+        super().__init__(parent)
+
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.CustomizeWindowHint  # sin botón X
+        )
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
+
+        # --- ICONO DE ALERTA ---
+        icon_label = QLabel()
+        icon_pix = QIcon("icons/warning.png").pixmap(64, 64)
+        icon_label.setPixmap(icon_pix)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(icon_label)
+
+        # --- TEXTO QUE SE AJUSTA ---
+        text_label = QLabel(text)
+        text_label.setWordWrap(True)
+        text_label.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        text_label.setStyleSheet("font-size: 15px;")
+        layout.addWidget(text_label, stretch=1)
+
+        # --- TAMAÑO AUTOMÁTICO ---
+        self.setMinimumWidth(420)
+        self.adjustSize()
 
 
 def apply_shadow(widget, blur=40, x=0, y=12, alpha=180):
@@ -68,16 +107,24 @@ def create_card(inner_widget):
 # =======================================================
 class ReaderThread(QThread):
     new_data = pyqtSignal(float, float, float, float, float, str)
+    modo_manual = pyqtSignal()
 
-    def __init__(self, ser, offsets):
+    def __init__(self, ser, offsets, parent_window):
         super().__init__()
         self.ser = ser
         self.offsets = offsets
+        self.parent_window = parent_window
         self._running = True
 
     def run(self):
         while self._running:
             valores = core.leer_linea(self.ser)
+            # --- Detectar aviso de cambio a CONTROL MANUAL ---
+            if valores == "SALIDA_PC":
+                print("⚠️ Cambio a control manual detectado")
+                self.modo_manual.emit()
+                continue
+
             if not valores:
                 continue
 
@@ -553,6 +600,92 @@ class MainWindow(QMainWindow):
         self.btn_limpiar.setEnabled(False)
         self.update_clear_button_state()
 
+        # === TIMER PARA DETECCIÓN DE FALTA DE DATOS ===
+        self.last_data_time = time.time()
+        self.no_data_alert_shown = False
+        self.data_monitoring_active = False
+
+        self.timer_no_data = QTimer()
+        self.timer_no_data.timeout.connect(self.check_no_data)
+        self.timer_no_data.start(1000)
+
+    def check_no_data(self):
+        if not self.data_monitoring_active:
+            return
+
+        if not self.ser:
+            return
+
+        if hasattr(self, "_startup_grace_period"):
+            if time.time() - self._startup_grace_period < 5:
+                return
+            else:
+                del self._startup_grace_period
+
+        elapsed = time.time() - self.last_data_time
+
+        if elapsed > 5 and not self.no_data_alert_shown:
+            self.no_data_alert_shown = True
+
+            self.dialog_no_data = AlertDialog(
+                self,
+                "Aviso",
+                "⚠️ No se reciben datos del equipo desde hace más de 5 segundos.\n"
+                "Verifique la conexión o cambie a modo PC.",
+            )
+            self.dialog_no_data.show()
+
+            self.estado_botones_antes_fallo = {
+                "conectar": self.btn_conectar.isEnabled(),
+                "iniciar": self.btn_iniciar.isEnabled(),
+                "detener": self.btn_detener.isEnabled(),
+                "guardar": self.btn_guardar.isEnabled(),
+                "export": self.btn_export.isEnabled(),
+                "limpiar": self.btn_limpiar.isEnabled(),
+                "dial_fan": self.dial_fan.isEnabled(),
+                "slider_heat": self.slider_heat.isEnabled(),
+            }
+
+            # Bloquear botones
+            self.bloquear_todo(True)
+
+    def aviso_manual(self):
+        self.estado_botones_antes_fallo = {
+            "conectar": self.btn_conectar.isEnabled(),
+            "iniciar": self.btn_iniciar.isEnabled(),
+            "detener": self.btn_detener.isEnabled(),
+            "guardar": self.btn_guardar.isEnabled(),
+            "export": self.btn_export.isEnabled(),
+            "limpiar": self.btn_limpiar.isEnabled(),
+            "dial_fan": self.dial_fan.isEnabled(),
+            "slider_heat": self.slider_heat.isEnabled(),
+        }
+        # Si ya está mostrando el aviso, ignorar
+        if hasattr(self, "dialog_manual") and self.dialog_manual.isVisible():
+            return
+
+        # Crear cuadro de diálogo sin botones y sin X
+        self.dialog_manual = AlertDialog(
+            self,
+            "Control manual",
+            "⚠️ El equipo ha pasado a CONTROL MANUAL.\n"
+            "El control desde el PC ha sido deshabilitado.",
+        )
+        self.dialog_manual.show()
+
+        # Bloquear TODOS los botones
+        self.bloquear_todo(True)
+
+    def bloquear_todo(self, estado):
+        self.btn_conectar.setEnabled(not estado)
+        self.btn_iniciar.setEnabled(not estado)
+        self.btn_detener.setEnabled(not estado)
+        self.btn_guardar.setEnabled(not estado)
+        self.btn_export.setEnabled(not estado)
+        self.btn_limpiar.setEnabled(not estado)
+        self.dial_fan.setEnabled(not estado)
+        self.slider_heat.setEnabled(not estado)
+
     def update_clear_button_state(self):
         """Bloquea o habilita el botón Clear Table según si hay datos."""
         if len(self.data_records) == 0:
@@ -903,9 +1036,17 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
             return
 
-        self.reader_thread = ReaderThread(self.ser, self.offsets)
+        self.no_data_alert_shown = False
+        self.last_data_time = time.time()
+
+        self.reader_thread = ReaderThread(self.ser, self.offsets, self)
         self.reader_thread.new_data.connect(self.actualizar_datos)
+        self.reader_thread.modo_manual.connect(self.aviso_manual)
+        self.data_monitoring_active = True
+
         self.reader_thread.start()
+
+        self._startup_grace_period = time.time()
 
         self.btn_conectar.setEnabled(False)
         self.btn_iniciar.setEnabled(False)
@@ -947,6 +1088,15 @@ class MainWindow(QMainWindow):
 
     def detener_lectura(self):
         if self.reader_thread:
+            # Cancelar aviso si estaba activo
+            if self.no_data_alert_shown:
+                self.no_data_alert_shown = False
+                if hasattr(self, "dialog_no_data") and self.dialog_no_data.isVisible():
+                    self.dialog_no_data.close()
+
+            # Asegurar que no salte aviso tras detener
+            self.data_monitoring_active = False
+
             self.reader_thread.stop()
             self.reader_thread.wait()
             t = self.translations[self.current_lang]
@@ -973,13 +1123,68 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, t["title"], t["messages"]["reading_stopped"])
 
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
+        # Registrar que hemos recibido datos
+        self.last_data_time = time.time()
+
+        # 🔹 Si había un aviso de NO DATOS → restaurar estado y cerrar popup
+        if self.no_data_alert_shown:
+            self.no_data_alert_shown = False
+            if hasattr(self, "dialog_no_data") and self.dialog_no_data.isVisible():
+                self.dialog_no_data.close()
+
+                # Restaurar estado EXACTO antes del fallo
+                if hasattr(self, "estado_botones_antes_fallo"):
+                    self.btn_conectar.setEnabled(
+                        self.estado_botones_antes_fallo["conectar"]
+                    )
+                    self.btn_iniciar.setEnabled(
+                        self.estado_botones_antes_fallo["iniciar"]
+                    )
+                    self.btn_detener.setEnabled(
+                        self.estado_botones_antes_fallo["detener"]
+                    )
+                    self.btn_guardar.setEnabled(
+                        self.estado_botones_antes_fallo["guardar"]
+                    )
+                    self.btn_export.setEnabled(
+                        self.estado_botones_antes_fallo["export"]
+                    )
+                    self.btn_limpiar.setEnabled(
+                        self.estado_botones_antes_fallo["limpiar"]
+                    )
+                    self.dial_fan.setEnabled(
+                        self.estado_botones_antes_fallo["dial_fan"]
+                    )
+                    self.slider_heat.setEnabled(
+                        self.estado_botones_antes_fallo["slider_heat"]
+                    )
+
+        # 🔹 Si había un aviso de CONTROL MANUAL → restaurar también
+        if hasattr(self, "dialog_manual") and self.dialog_manual.isVisible():
+            self.dialog_manual.close()
+
+            # Restaurar estado EXACTO previo
+            if hasattr(self, "estado_botones_antes_fallo"):
+                self.btn_conectar.setEnabled(
+                    self.estado_botones_antes_fallo["conectar"]
+                )
+                self.btn_iniciar.setEnabled(self.estado_botones_antes_fallo["iniciar"])
+                self.btn_detener.setEnabled(self.estado_botones_antes_fallo["detener"])
+                self.btn_guardar.setEnabled(self.estado_botones_antes_fallo["guardar"])
+                self.btn_export.setEnabled(self.estado_botones_antes_fallo["export"])
+                self.btn_limpiar.setEnabled(self.estado_botones_antes_fallo["limpiar"])
+                self.dial_fan.setEnabled(self.estado_botones_antes_fallo["dial_fan"])
+                self.slider_heat.setEnabled(
+                    self.estado_botones_antes_fallo["slider_heat"]
+                )
+
         # Detectamos el número de serie SOLO una vez
         if not hasattr(self, "serial_number_detected"):
             self.serial_number_detected = serial_number
             print(f"🔍 Serial detectado: {serial_number}")
-
             self.verify_machine_with_api(serial_number)
 
+        # --- Actualización visual normal ---
         t = self.translations[self.current_lang]["labels"]
 
         self.lbl_te.setText(t["te"].format(val=te))
@@ -988,55 +1193,22 @@ class MainWindow(QMainWindow):
         self.lbl_vel.setText(t["vel"].format(val=vel))
         if pot < 5:
             pot = 0
-
         self.lbl_pot.setText(t["pot"].format(val=pot))
 
-        t = time.time() - self.t0
-        self.data_x.append(t)
+        # --- Actualización de la gráfica ---
+        tx = time.time() - self.t0
+        self.data_x.append(tx)
         self.data_te.append(te)
         self.data_ts.append(ts)
         self.data_tc.append(tc)
         self.data_vel.append(vel)
         self.data_pot.append(pot)
 
-        # Evita que la memoria se sature (limitado a 200 puntos)
-        # if len(self.data_x) > 200:
-        #     self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot = [
-        #         lst[-200:] for lst in [self.data_x, self.data_te, self.data_ts, self.data_tc, self.data_vel, self.data_pot]
-        #     ]
-
         self.curve_te.setData(self.data_x, self.data_te)
         self.curve_ts.setData(self.data_x, self.data_ts)
         self.curve_tc.setData(self.data_x, self.data_tc)
         self.curve_vel.setData(self.data_x, self.data_vel)
         self.curve_pot.setData(self.data_x, self.data_pot)
-
-        # # Guardar lectura localmente para envío posterior
-        # if not hasattr(self, "buffer_results"):
-        #     self.buffer_results = []
-
-        # # Solo un append (no duplicado)
-        # self.buffer_results.append(
-        #     {
-        #         "timestamp": datetime.utcnow().isoformat(),
-        #         "metrics": {
-        #             "TE": te,
-        #             "TS": ts,
-        #             "TC": tc,
-        #             "Velocity": vel,
-        #             "Power": pot,
-        #         },
-        #     }
-        # )
-
-        # Si ya existe run, mover buffer → local
-        # if hasattr(self, "run_id") and self.run_id:
-        #     if not hasattr(self, "local_results"):
-        #         self.local_results = []
-
-        #     # MOVER buffer → local
-        #     self.local_results.extend(self.buffer_results)
-        #     self.buffer_results.clear()
 
     def actualizar_fan(self, value):
         if not self.ser:
@@ -1182,6 +1354,8 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             print(f"❌ Error al enviar datos: {e}")
+
+        self.data_monitoring_active = False
 
         event.accept()
 
