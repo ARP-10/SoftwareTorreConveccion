@@ -80,6 +80,7 @@ QGroupBox#group_grafica::title {
     color: #0077b6;
     font: 700 14pt "Segoe UI";
     background-image: url("icons/graph.png");
+    padding-left: 50px; 
 }
 
 /* ============================================================
