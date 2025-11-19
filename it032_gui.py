@@ -549,6 +549,16 @@ class MainWindow(QMainWindow):
         self.btn_iniciar.setEnabled(False)
         self.dial_fan.setEnabled(False)
         self.slider_heat.setEnabled(False)
+        self.btn_detener.setEnabled(False)
+        self.btn_limpiar.setEnabled(False)
+        self.update_clear_button_state()
+
+    def update_clear_button_state(self):
+        """Bloquea o habilita el botón Clear Table según si hay datos."""
+        if len(self.data_records) == 0:
+            self.btn_limpiar.setEnabled(False)
+        else:
+            self.btn_limpiar.setEnabled(True)
 
     def load_translations(self):
         try:
@@ -579,7 +589,14 @@ class MainWindow(QMainWindow):
             print(f"❌ Error consultando API: {e}")
 
     def limpiar_tabla(self):
-        """Pregunta antes de limpiar la tabla"""
+        if len(self.data_records) == 0:
+            self.table.setRowCount(0)
+            self.data_records = []
+            if hasattr(self, "local_results"):
+                self.local_results = []
+            print("🧹 Tabla vacía: no había registros. Nada que enviar.")
+            self.btn_limpiar.setEnabled(False)
+            return
 
         t = self.translations[self.current_lang]["dialogs_clear"]
 
@@ -629,6 +646,8 @@ class MainWindow(QMainWindow):
         self.data_records = []
         self.local_results = []
         self.run_id = None
+        self.btn_limpiar.setEnabled(False)
+        self.update_clear_button_state()
         print("🧹 Tabla limpiada y RUN reiniciada")
 
     # =======================================================
@@ -652,6 +671,8 @@ class MainWindow(QMainWindow):
             pot = float(self.lbl_pot.text().split(":")[1].replace("W", "").strip())
 
             self.data_records.append([fecha, hora, te, ts, tc, vel, pot])
+            self.update_clear_button_state()
+
             self.table.setRowCount(len(self.data_records))
             i = len(self.data_records) - 1
             self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
@@ -850,6 +871,8 @@ class MainWindow(QMainWindow):
         self.curve_vel.opts["name"] = legend_labels[3]
         self.curve_pot.opts["name"] = legend_labels[4]
 
+        self.update_clear_button_state()
+
     # =======================================================
     # FUNCIONES PRINCIPALES
     # =======================================================
@@ -867,8 +890,10 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self, t["title"], t["messages"]["connected"].format(port=port)
         )
+        self.btn_conectar.setEnabled(False)
         self.dial_fan.setEnabled(True)
         self.slider_heat.setEnabled(True)
+        self.update_clear_button_state()
         self.iniciar_lectura()
 
     def iniciar_lectura(self):
@@ -882,11 +907,12 @@ class MainWindow(QMainWindow):
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
 
+        self.btn_conectar.setEnabled(False)
         self.btn_iniciar.setEnabled(False)
         self.btn_detener.setEnabled(True)
         self.dial_fan.setEnabled(True)
         self.slider_heat.setEnabled(True)
-
+        self.update_clear_button_state()
         QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
 
     def start_run_on_server(self):
@@ -939,14 +965,11 @@ class MainWindow(QMainWindow):
             except:
                 print("⚠️ No se pudieron enviar los comandos de apagado.")
 
-            # 🔒 3) BLOQUEAR CONTROLES FAN & HEATER
             self.dial_fan.setEnabled(False)
             self.slider_heat.setEnabled(False)
-
-            # Botones
             self.btn_iniciar.setEnabled(True)
             self.btn_detener.setEnabled(False)
-
+            self.update_clear_button_state()
             QMessageBox.information(self, t["title"], t["messages"]["reading_stopped"])
 
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
