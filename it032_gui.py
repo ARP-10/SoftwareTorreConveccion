@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor
 import core
 
-API_BASE_URL = "http://127.0.0.1:8000/api"  # cambia por tu IP si no está local
+API_BASE_URL = "https://iotnexus.dikoin.com/api"  # cambia por tu IP si no está local
 
 
 def apply_shadow(widget, blur=40, x=0, y=12, alpha=180):
@@ -866,7 +866,7 @@ class MainWindow(QMainWindow):
         )
 
         # ⬇️⬇️ AUTO-START LECTURA AQUÍ ⬇️⬇️
-        self.btn_iniciar.setEnabled(False)
+        self.iniciar_lectura()
 
     def iniciar_lectura(self):
         t = self.translations[self.current_lang]
@@ -878,8 +878,6 @@ class MainWindow(QMainWindow):
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
-
-        self.btn_iniciar.setEnabled(False)
 
         QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
 
@@ -919,7 +917,6 @@ class MainWindow(QMainWindow):
             self.reader_thread.wait()
             t = self.translations[self.current_lang]
             QMessageBox.information(self, t["title"], t["messages"]["reading_stopped"])
-        self.btn_iniciar.setEnabled(True)
 
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
         # Detectamos el número de serie SOLO una vez
@@ -1182,8 +1179,6 @@ class ResultsWindow(QWidget):
         layout.addWidget(self.table)
         layout.addLayout(h_btns)
         self.setLayout(layout)
-        self.btn_iniciar.setEnabled(False)
-
 
     def update_table(self):
         """Actualiza la tabla con numeración y valores"""
