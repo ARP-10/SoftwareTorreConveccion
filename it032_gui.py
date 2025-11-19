@@ -547,6 +547,8 @@ class MainWindow(QMainWindow):
         self.t0 = time.time()
         self.set_language(self.current_lang)
         self.btn_iniciar.setEnabled(False)
+        self.dial_fan.setEnabled(False)
+        self.slider_heat.setEnabled(False)
 
     def load_translations(self):
         try:
@@ -865,7 +867,8 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self, t["title"], t["messages"]["connected"].format(port=port)
         )
-
+        self.dial_fan.setEnabled(True)
+        self.slider_heat.setEnabled(True)
         self.iniciar_lectura()
 
     def iniciar_lectura(self):
@@ -881,6 +884,8 @@ class MainWindow(QMainWindow):
 
         self.btn_iniciar.setEnabled(False)
         self.btn_detener.setEnabled(True)
+        self.dial_fan.setEnabled(True)
+        self.slider_heat.setEnabled(True)
 
         QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
 
@@ -919,6 +924,26 @@ class MainWindow(QMainWindow):
             self.reader_thread.stop()
             self.reader_thread.wait()
             t = self.translations[self.current_lang]
+
+            # 🔥 1) FORZAR FAN Y HEAT A 0
+            self.dial_fan.setValue(0)
+            self.slider_heat.setValue(0)
+
+            # 🔥 2) ENVIAR FAN000 Y HEAT000 AL EQUIPO
+            try:
+                if self.ser:
+                    self.ser.write(b"FAN000\n")
+                    self.ser.write(b"HEAT000\n")
+                    print("[TX] FAN000")
+                    print("[TX] HEAT000")
+            except:
+                print("⚠️ No se pudieron enviar los comandos de apagado.")
+
+            # 🔒 3) BLOQUEAR CONTROLES FAN & HEATER
+            self.dial_fan.setEnabled(False)
+            self.slider_heat.setEnabled(False)
+
+            # Botones
             self.btn_iniciar.setEnabled(True)
             self.btn_detener.setEnabled(False)
 
@@ -991,17 +1016,22 @@ class MainWindow(QMainWindow):
         #     self.buffer_results.clear()
 
     def actualizar_fan(self, value):
+        if not self.ser:
+            self.dial_fan.setValue(0)
+            return
+
         t = self.translations[self.current_lang]
         percent = int(value / 2.55)
         self.lbl_fan.setText(t["fan"].format(val=percent))
 
-        # Guardar el último valor movido
         self._fan_pending_value = value
-
-        # Reiniciar el timer (espera 120 ms)
         self.timer_fan.start(120)
 
     def actualizar_heat(self, value):
+        if not self.ser:
+            self.slider_heat.setValue(0)
+            return
+
         t = self.translations[self.current_lang]
         percent = int(value / 2.55)
         self.lbl_heat.setText(t["heater"].format(val=percent))
@@ -1097,6 +1127,15 @@ class MainWindow(QMainWindow):
             self.reader_thread.wait()
 
         if self.ser and self.ser.is_open:
+            try:
+                self.ser.write(b"FAN000\n")
+                self.ser.write(b"HEAT000\n")
+                print("[TX] FAN000 (shutdown)")
+                print("[TX] HEAT000 (shutdown)")
+                time.sleep(0.1)  # pequeño delay para asegurar envío
+            except:
+                print("⚠️ No se pudo enviar apagado al cerrar.")
+
             self.ser.close()
 
         # NO enviar ni cerrar runs si no hay datos
