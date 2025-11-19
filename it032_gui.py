@@ -546,6 +546,7 @@ class MainWindow(QMainWindow):
         ) = ([], [], [], [], [], [])
         self.t0 = time.time()
         self.set_language(self.current_lang)
+        self.btn_iniciar.setEnabled(False)
 
     def load_translations(self):
         try:
@@ -865,7 +866,6 @@ class MainWindow(QMainWindow):
             self, t["title"], t["messages"]["connected"].format(port=port)
         )
 
-        # ⬇️⬇️ AUTO-START LECTURA AQUÍ ⬇️⬇️
         self.iniciar_lectura()
 
     def iniciar_lectura(self):
@@ -878,6 +878,9 @@ class MainWindow(QMainWindow):
         self.reader_thread = ReaderThread(self.ser, self.offsets)
         self.reader_thread.new_data.connect(self.actualizar_datos)
         self.reader_thread.start()
+
+        self.btn_iniciar.setEnabled(False)
+        self.btn_detener.setEnabled(True)
 
         QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
 
@@ -916,6 +919,9 @@ class MainWindow(QMainWindow):
             self.reader_thread.stop()
             self.reader_thread.wait()
             t = self.translations[self.current_lang]
+            self.btn_iniciar.setEnabled(True)
+            self.btn_detener.setEnabled(False)
+
             QMessageBox.information(self, t["title"], t["messages"]["reading_stopped"])
 
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
