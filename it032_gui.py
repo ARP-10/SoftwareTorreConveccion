@@ -1235,6 +1235,13 @@ class MainWindow(QMainWindow):
             self.btn_iniciar.setEnabled(True)
             self.btn_detener.setEnabled(False)
             self.update_clear_button_state()
+            # 🧹 Resetear estados después de detener
+            self.manual_mode_active = False
+            self.no_data_alert_shown = False
+
+            if hasattr(self, "estado_botones_antes_fallo"):
+                del self.estado_botones_antes_fallo
+
             QMessageBox.information(self, t["title"], t["messages"]["reading_stopped"])
 
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
