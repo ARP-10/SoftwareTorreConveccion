@@ -80,6 +80,44 @@ class AlertDialog(QDialog):
         self.adjustSize()
 
 
+class ManualModeDialog(QDialog):
+    def __init__(self, parent, translations, lang):
+        super().__init__(parent)
+
+        t = translations[lang]["manual_mode_dialog"]
+
+        self.setWindowTitle(t["title"])
+        self.setModal(True)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.CustomizeWindowHint
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        label = QLabel(t["message"])
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        # --- SOLO UN BOTÓN ---
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        self.btn_cerrar = QPushButton(t["close_button"])
+        btn_layout.addWidget(self.btn_cerrar)
+
+        layout.addLayout(btn_layout)
+
+        self.btn_cerrar.clicked.connect(self.cerrar)
+
+        self.result = None
+
+    def cerrar(self):
+        self.result = "cerrar"
+        self.close()
+
+
 def apply_shadow(widget, blur=40, x=0, y=12, alpha=180):
     shadow = QGraphicsDropShadowEffect()
     shadow.setBlurRadius(blur)
@@ -162,6 +200,9 @@ class ReaderThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.manual_mode_active = False
+        self.language_change = False
+
         # --- Cargar traducciones ---
         with open("translations.json", "r", encoding="utf-8") as f:
             self.translations = json.load(f)
@@ -610,6 +651,11 @@ class MainWindow(QMainWindow):
         self.timer_no_data.start(1000)
 
     def check_no_data(self):
+        if self.manual_mode_active:
+            return
+        if getattr(self, "manual_mode_active", False):
+            return
+
         if not self.data_monitoring_active:
             return
 
@@ -650,6 +696,7 @@ class MainWindow(QMainWindow):
             self.bloquear_todo(True)
 
     def aviso_manual(self):
+        self.manual_mode_active = True
         self.estado_botones_antes_fallo = {
             "conectar": self.btn_conectar.isEnabled(),
             "iniciar": self.btn_iniciar.isEnabled(),
@@ -660,21 +707,37 @@ class MainWindow(QMainWindow):
             "dial_fan": self.dial_fan.isEnabled(),
             "slider_heat": self.slider_heat.isEnabled(),
         }
-        # Si ya está mostrando el aviso, ignorar
+
+        try:
+            if self.ser:
+                self.ser.write(b"FAN000\n")
+                self.ser.write(b"HEAT000\n")
+                print("[TX] FAN000 (manual mode)")
+                print("[TX] HEAT000 (manual mode)")
+        except:
+            print("⚠️ No se pudieron enviar apagados al entrar en modo manual")
+
+        # 💡 Actualizar interfaz
+        self.dial_fan.setValue(0)
+        self.slider_heat.setValue(0)
+
+        # Si ya está abierto, no repetir
         if hasattr(self, "dialog_manual") and self.dialog_manual.isVisible():
             return
 
-        # Crear cuadro de diálogo sin botones y sin X
-        self.dialog_manual = AlertDialog(
-            self,
-            "Control manual",
-            "⚠️ El equipo ha pasado a CONTROL MANUAL.\n"
-            "El control desde el PC ha sido deshabilitado.",
+        # Mostrar diálogo personalizado
+        self.dialog_manual = ManualModeDialog(
+            self, self.translations, self.current_lang
         )
-        self.dialog_manual.show()
+        self.dialog_manual.exec()
 
-        # Bloquear TODOS los botones
-        self.bloquear_todo(True)
+        if self.dialog_manual.result == "cerrar":
+            print("🔴 Usuario eligió cerrar el programa.")
+            self.close()
+            return
+
+        # Si cierra la ventana sin pulsar nada → simplemente esperar datos
+        print("🟡 Esperando regreso a modo PC...")
 
     def bloquear_todo(self, estado):
         self.btn_conectar.setEnabled(not estado)
@@ -930,6 +993,7 @@ class MainWindow(QMainWindow):
     # CAMBIO DE IDIOMA (desde translations.json)
     # =======================================================
     def set_language(self, lang):
+        self.language_change = True
         if lang not in self.translations:
             print(f"⚠️ Idioma no encontrado en translations.json: {lang}")
             return
@@ -1005,6 +1069,7 @@ class MainWindow(QMainWindow):
         self.curve_pot.opts["name"] = legend_labels[4]
 
         self.update_clear_button_state()
+        self.language_change = False
 
     # =======================================================
     # FUNCIONES PRINCIPALES
@@ -1125,6 +1190,9 @@ class MainWindow(QMainWindow):
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
         # Registrar que hemos recibido datos
         self.last_data_time = time.time()
+        # Si vuelven los datos, desactivamos el modo manual
+        if self.manual_mode_active:
+            self.manual_mode_active = False
 
         # 🔹 Si había un aviso de NO DATOS → restaurar estado y cerrar popup
         if self.no_data_alert_shown:
@@ -1133,38 +1201,41 @@ class MainWindow(QMainWindow):
                 self.dialog_no_data.close()
 
                 # Restaurar estado EXACTO antes del fallo
-                if hasattr(self, "estado_botones_antes_fallo"):
-                    self.btn_conectar.setEnabled(
-                        self.estado_botones_antes_fallo["conectar"]
-                    )
-                    self.btn_iniciar.setEnabled(
-                        self.estado_botones_antes_fallo["iniciar"]
-                    )
-                    self.btn_detener.setEnabled(
-                        self.estado_botones_antes_fallo["detener"]
-                    )
-                    self.btn_guardar.setEnabled(
-                        self.estado_botones_antes_fallo["guardar"]
-                    )
-                    self.btn_export.setEnabled(
-                        self.estado_botones_antes_fallo["export"]
-                    )
-                    self.btn_limpiar.setEnabled(
-                        self.estado_botones_antes_fallo["limpiar"]
-                    )
-                    self.dial_fan.setEnabled(
-                        self.estado_botones_antes_fallo["dial_fan"]
-                    )
-                    self.slider_heat.setEnabled(
-                        self.estado_botones_antes_fallo["slider_heat"]
-                    )
+                if (
+                    not self.language_change
+                ):  # ⛔ NO restaurar si se está cambiando el idioma
+                    if hasattr(self, "estado_botones_antes_fallo"):
+                        self.btn_conectar.setEnabled(
+                            self.estado_botones_antes_fallo["conectar"]
+                        )
+                        self.btn_iniciar.setEnabled(
+                            self.estado_botones_antes_fallo["iniciar"]
+                        )
+                        self.btn_detener.setEnabled(
+                            self.estado_botones_antes_fallo["detener"]
+                        )
+                        self.btn_guardar.setEnabled(
+                            self.estado_botones_antes_fallo["guardar"]
+                        )
+                        self.btn_export.setEnabled(
+                            self.estado_botones_antes_fallo["export"]
+                        )
+                        self.btn_limpiar.setEnabled(
+                            self.estado_botones_antes_fallo["limpiar"]
+                        )
+                        self.dial_fan.setEnabled(
+                            self.estado_botones_antes_fallo["dial_fan"]
+                        )
+                        self.slider_heat.setEnabled(
+                            self.estado_botones_antes_fallo["slider_heat"]
+                        )
 
         # 🔹 Si había un aviso de CONTROL MANUAL → restaurar también
-        if hasattr(self, "dialog_manual") and self.dialog_manual.isVisible():
-            self.dialog_manual.close()
+        if hasattr(self, "dialog_manual"):
 
-            # Restaurar estado EXACTO previo
-            if hasattr(self, "estado_botones_antes_fallo"):
+            # restaurar SIEMPRE que vuelva el modo PC (no dependemos de isVisible())
+            if not self.language_change and hasattr(self, "estado_botones_antes_fallo"):
+
                 self.btn_conectar.setEnabled(
                     self.estado_botones_antes_fallo["conectar"]
                 )
@@ -1177,6 +1248,13 @@ class MainWindow(QMainWindow):
                 self.slider_heat.setEnabled(
                     self.estado_botones_antes_fallo["slider_heat"]
                 )
+
+            # ahora sí cerramos el popup si está abierto
+            if self.dialog_manual.isVisible():
+                self.dialog_manual.close()
+
+        # salir del estado manual
+        self.manual_mode_active = False
 
         # Detectamos el número de serie SOLO una vez
         if not hasattr(self, "serial_number_detected"):
