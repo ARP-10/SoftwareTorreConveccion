@@ -77,7 +77,13 @@
     "title": "Control manual",
     "message": "⚠️ El equipo ha pasado a CONTROL MANUAL.\n\nSi desea controlar el equipo manualmente desde el panel físico,\npuede cerrar el software.\n\nSi vuelve a seleccionar el MODO PC en el equipo,\nel software seguirá funcionando normalmente.",
     "close_button": "Cerrar programa"
-  }
+  },
+  "no_data_dialog": {
+  "title": "Sin datos",
+  "message": "⚠️ No se reciben datos del equipo desde hace más de 5 segundos.\nEs posible que el cable USB esté desconectado.\nVerifique la conexión.",
+  "close_button": "Cerrar programa"
+}
+
 
 
   },
@@ -159,7 +165,13 @@
     "title": "Manual control",
     "message": "⚠️ The device has switched to MANUAL CONTROL.\n\nIf you want to operate the device manually using the physical panel,\nyou can close the software.\n\nIf you switch back to PC MODE on the device,\nthe software will continue working normally.",
     "close_button": "Close program"
-    }
+    },
+    "no_data_dialog": {
+  "title": "No data",
+  "message": "⚠️ No data has been received for more than 5 seconds.\nThe USB cable may be disconnected.\nCheck the connection.",
+  "close_button": "Close program"
+}
+
 
 
   }

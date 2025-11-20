@@ -80,6 +80,42 @@ class AlertDialog(QDialog):
         self.adjustSize()
 
 
+class NoDataDialog(QDialog):
+    def __init__(self, parent, translations, lang):
+        super().__init__(parent)
+
+        t = translations[lang]["no_data_dialog"]
+
+        self.setWindowTitle(t["title"])
+        self.setModal(True)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.CustomizeWindowHint
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        label = QLabel(t["message"])
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        self.btn_close = QPushButton(t["close_button"])
+        btn_layout.addWidget(self.btn_close)
+        layout.addLayout(btn_layout)
+
+        self.btn_close.clicked.connect(self.close_app)
+
+        self.result = None
+
+    def close_app(self):
+        self.result = "close"
+        self.close()
+
+
 class ManualModeDialog(QDialog):
     def __init__(self, parent, translations, lang):
         super().__init__(parent)
@@ -673,13 +709,27 @@ class MainWindow(QMainWindow):
         if elapsed > 5 and not self.no_data_alert_shown:
             self.no_data_alert_shown = True
 
-            self.dialog_no_data = AlertDialog(
-                self,
-                "Aviso",
-                "⚠️ No se reciben datos del equipo desde hace más de 5 segundos.\n"
-                "Verifique la conexión o cambie a modo PC.",
+            try:
+                if self.ser:
+                    self.ser.write(b"FAN000\n")
+                    self.ser.write(b"HEAT000\n")
+                    print("[TX] FAN000 (no data)")
+                    print("[TX] HEAT000 (no data)")
+            except:
+                print("⚠️ No se pudo enviar apagado (no data)")
+
+            # Reset visual inmediato
+            self.dial_fan.setValue(0)
+            self.slider_heat.setValue(0)
+
+            self.dialog_no_data = NoDataDialog(
+                self, self.translations, self.current_lang
             )
-            self.dialog_no_data.show()
+            self.dialog_no_data.exec()
+
+            if self.dialog_no_data.result == "close":
+                self.close()
+                return
 
             self.estado_botones_antes_fallo = {
                 "conectar": self.btn_conectar.isEnabled(),
