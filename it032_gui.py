@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
-from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtGui import QFont, QIcon, QMovie
 import sys
 import time
 import pyqtgraph as pg
@@ -41,6 +41,83 @@ from PyQt6.QtGui import QColor
 import core
 
 API_BASE_URL = "https://iotnexus.dikoin.com/api"  # cambia por tu IP si no está local
+
+
+class LoadingDialog(QDialog):
+    def __init__(self, parent, text="Procesando..."):
+        super().__init__(parent)
+
+        self.setWindowTitle(text)
+        self.setModal(True)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.CustomizeWindowHint
+        )
+
+        self.setWindowIcon(QIcon("fotos/dikoin_logo.jpg"))
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Spinner animado (GIF)
+        self.movie_label = QLabel()
+        self.movie_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.movie = QMovie("icons/spinner.gif")  # añade tu spinner.gif en /icons
+        self.movie.setScaledSize(QSize(64, 64))
+        self.movie_label.setMovie(self.movie)
+        self.movie.start()
+
+        layout.addWidget(self.movie_label)
+
+        self.setFixedSize(260, 160)
+
+
+class ClearTableWorker(QThread):
+    finished = pyqtSignal(bool, str)  # éxito / error, mensaje
+
+    def __init__(self, run_id, local_results):
+        super().__init__()
+        self.run_id = run_id
+        self.local_results = local_results
+
+    def run(self):
+        try:
+            payload = {"run_id": self.run_id, "results": self.local_results}
+            response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
+
+            if response.status_code == 201:
+                requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
+                self.finished.emit(True, "OK")
+            else:
+                self.finished.emit(False, response.text)
+
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+
+class CloseSendWorker(QThread):
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, run_id, local_results):
+        super().__init__()
+        self.run_id = run_id
+        self.local_results = local_results
+
+    def run(self):
+        try:
+            payload = {"run_id": self.run_id, "results": self.local_results}
+            response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
+
+            if response.status_code == 201:
+                requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
+                self.finished.emit(True, "OK")
+            else:
+                self.finished.emit(False, response.text)
+
+        except Exception as e:
+            self.finished.emit(False, str(e))
 
 
 class AlertDialog(QDialog):
@@ -686,6 +763,21 @@ class MainWindow(QMainWindow):
         self.timer_no_data.timeout.connect(self.check_no_data)
         self.timer_no_data.start(1000)
 
+    def _finish_close(self, event, ok, message):
+        self.loading_close.close()
+
+        if not ok:
+            QMessageBox.warning(self, "Error", f"Error enviando datos:\n{message}")
+
+        # Reset local data
+        self.local_results = []
+        self.run_id = None
+
+        print("🧾 Run cerrada correctamente. Saliendo...")
+
+        event.accept()
+        self.close()
+
     def check_no_data(self):
         if self.manual_mode_active:
             return
@@ -857,37 +949,49 @@ class MainWindow(QMainWindow):
         msg.exec()
 
         if msg.clickedButton() != btn_yes:
-            return  # ❌ Cancelado
+            return
 
         print("🧹 Limpiando tabla…")
 
-        # Si NO hay run activa o no hay datos → solo limpiar la UI
-        if not getattr(self, "run_id", None) or not getattr(self, "data_records", []):
-            self.table.setRowCount(0)
-            self.data_records = []
-            if hasattr(self, "local_results"):
-                self.local_results = []
-            return
+        # SI hay run activa → enviar a API ANTES DE BORRAR
+        if getattr(self, "run_id", None) and getattr(self, "local_results", []):
 
-        # SI hay run activa + datos → enviar a API antes de limpiar
-        try:
-            total = len(self.local_results)
-            print(f"📡 Enviando {total} resultados al servidor antes de limpiar...")
+            print(
+                f"📡 Enviando {len(self.local_results)} resultados al servidor antes de limpiar..."
+            )
 
-            payload = {"run_id": self.run_id, "results": self.local_results}
-            response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
+            # Mostrar spinner
+            self.loading = LoadingDialog(
+                self,
+                (
+                    "Enviando datos al servidor…"
+                    if self.current_lang == "es"
+                    else "Sending data to server…"
+                ),
+            )
+            self.loading.show()
+            QApplication.processEvents()
 
-            if response.status_code == 201:
-                print("✅ Resultados enviados correctamente al limpiar tabla")
-                requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
-                print("🧾 Run cerrada correctamente.")
-            else:
-                print("⚠️ Error al enviar resultados:", response.text)
+            # Lanzar hilo asíncrono para no congelar UI
+            self.worker = ClearTableWorker(self.run_id, self.local_results)
+            self.worker.finished.connect(self._on_clear_finished)
+            self.worker.start()
 
-        except Exception as e:
-            print("❌ Error al enviar datos:", e)
+        else:
+            # Sólo limpiar si no hay datos o run
+            self._final_clear_table()
 
-        # LIMPIAR
+    def _on_clear_finished(self, ok, message):
+        self.loading.close()
+
+        if not ok:
+            QMessageBox.warning(self, "Error", f"Error enviando datos:\n{message}")
+
+        print("🧾 Datos enviados y run cerrada.")
+
+        self._final_clear_table()
+
+    def _final_clear_table(self):
         self.table.setRowCount(0)
         self.data_records = []
         self.local_results = []
@@ -1474,9 +1578,21 @@ class MainWindow(QMainWindow):
             return event.accept()
 
         # ENVIAR resultados
+        loading = LoadingDialog(
+            self,
+            (
+                "Cerrando programa..."
+                if self.current_lang == "es"
+                else "Closing program…"
+            ),
+        )
+        loading.show()
+        QApplication.processEvents()
+
         try:
             payload = {"run_id": self.run_id, "results": self.local_results}
-            print(f"📡 Enviando {len(self.local_results)} resultados al servidor...")
+            print(f"📡 Enviando {len(self.local_results)} resultados al servidor…")
+
             response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
 
             if response.status_code == 201:
@@ -1490,8 +1606,9 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"❌ Error al enviar datos: {e}")
 
-        self.data_monitoring_active = False
+        loading.close()
 
+        self.data_monitoring_active = False
         event.accept()
 
 
