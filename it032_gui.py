@@ -963,11 +963,7 @@ class MainWindow(QMainWindow):
             # Mostrar spinner
             self.loading = LoadingDialog(
                 self,
-                (
-                    "Enviando datos al servidor…"
-                    if self.current_lang == "es"
-                    else "Sending data to server…"
-                ),
+                ("Borrando tabla…" if self.current_lang == "es" else "Cleaning table…"),
             )
             self.loading.show()
             QApplication.processEvents()
@@ -1541,6 +1537,24 @@ class MainWindow(QMainWindow):
         t = self.translations[self.current_lang]["dialogs_close"]
 
         # ===============================================
+        # 🔥 1) SI HAY DATOS → PREGUNTAR ANTES DE SALIR
+        # ===============================================
+        if len(self.data_records) > 0:
+            msg = QMessageBox(self)
+            msg.setWindowTitle(t["confirm_title"])
+            msg.setText(t["confirm_message"])
+            msg.setIcon(QMessageBox.Icon.Warning)
+
+            btn_yes = msg.addButton(t["yes"], QMessageBox.ButtonRole.YesRole)
+            btn_no = msg.addButton(t["no"], QMessageBox.ButtonRole.NoRole)
+
+            msg.exec()
+
+            if msg.clickedButton() == btn_no:
+                event.ignore()
+                return
+
+        # ===============================================
         # 🔒 SAFETY CHECK: FAN y HEAT deben estar en 0
         # ===============================================
         fan_value = self.dial_fan.value()
@@ -1578,7 +1592,7 @@ class MainWindow(QMainWindow):
             return event.accept()
 
         # ENVIAR resultados
-        loading = LoadingDialog(
+        self.loading = LoadingDialog(
             self,
             (
                 "Cerrando programa..."
@@ -1586,7 +1600,7 @@ class MainWindow(QMainWindow):
                 else "Closing program…"
             ),
         )
-        loading.show()
+        self.loading.show()
         QApplication.processEvents()
 
         try:
@@ -1606,7 +1620,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"❌ Error al enviar datos: {e}")
 
-        loading.close()
+        self.loading.close()
 
         self.data_monitoring_active = False
         event.accept()
