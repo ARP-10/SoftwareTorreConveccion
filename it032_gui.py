@@ -843,6 +843,7 @@ class MainWindow(QMainWindow):
                 return
 
             self.estado_botones_antes_fallo = {
+                "conectar": self.btn_conectar.isEnabled(),
                 "iniciar": self.btn_iniciar.isEnabled(),
                 "detener": self.btn_detener.isEnabled(),
                 "guardar": self.btn_guardar.isEnabled(),
@@ -860,6 +861,7 @@ class MainWindow(QMainWindow):
             return
         self.manual_mode_active = True
         self.estado_botones_antes_fallo = {
+            "conectar": self.btn_conectar.isEnabled(),
             "iniciar": self.btn_iniciar.isEnabled(),
             "detener": self.btn_detener.isEnabled(),
             "guardar": self.btn_guardar.isEnabled(),
