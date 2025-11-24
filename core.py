@@ -61,7 +61,7 @@ def detectar_puerto():
 def leer_linea(ser):
     try:
         line = ser.readline().decode(errors="ignore").strip()
-        print(">>", repr(line))
+        # print(">>", repr(line))
         if "SALIDA_PC" in line or "MANUAL" in line or "PC_OFF" in line:
             print("¡¡Modo manual detectado!! Línea recibida:", line)
             return "SALIDA_PC"

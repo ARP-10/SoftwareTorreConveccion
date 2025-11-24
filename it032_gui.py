@@ -104,7 +104,7 @@ class ClearTableWorker(QThread):
             self.finished.emit(False, str(e))
 
 
-class CloseSendWorker(QThread):
+class CloseWorker(QThread):
     finished = pyqtSignal(bool, str)
 
     def __init__(self, run_id, local_results):
@@ -115,13 +115,13 @@ class CloseSendWorker(QThread):
     def run(self):
         try:
             payload = {"run_id": self.run_id, "results": self.local_results}
-            response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
+            r = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
 
-            if response.status_code == 201:
+            if r.status_code == 201:
                 requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
                 self.finished.emit(True, "OK")
             else:
-                self.finished.emit(False, response.text)
+                self.finished.emit(False, r.text)
 
         except Exception as e:
             self.finished.emit(False, str(e))
@@ -326,6 +326,8 @@ class MainWindow(QMainWindow):
         # --- Cargar traducciones ---
         with open("translations.json", "r", encoding="utf-8") as f:
             self.translations = json.load(f)
+
+        self.is_closing = False
 
         self.current_lang = "en"
 
@@ -562,7 +564,8 @@ class MainWindow(QMainWindow):
         self.btn_export.clicked.connect(self.export_excel)
 
         self.btn_conectar = QPushButton(t["connect"])
-        self.btn_conectar.setIcon(QIcon("icons/connect.png"))
+        self.btn_conectar.hide()
+        self.btn_conectar.setEnabled(False)
 
         self.btn_iniciar = QPushButton(t["start"])
         self.btn_iniciar.setIcon(QIcon("icons/start.png"))
@@ -738,7 +741,6 @@ class MainWindow(QMainWindow):
         # =======================================================
         # EVENTOS
         # =======================================================
-        self.btn_conectar.clicked.connect(self.conectar)
         self.btn_iniciar.clicked.connect(self.iniciar_lectura)
         self.btn_detener.clicked.connect(self.detener_lectura)
         self.btn_guardar.clicked.connect(self.guardar_dato)
@@ -770,22 +772,32 @@ class MainWindow(QMainWindow):
         self.timer_no_data.timeout.connect(self.check_no_data)
         self.timer_no_data.start(1000)
 
-    def _finish_close(self, event, ok, message):
+        QTimer.singleShot(300, self.auto_connect)
+
+    def auto_connect(self):
+        try:
+            self.conectar()  # Detecta puerto y abre conexión
+            self.iniciar_lectura()  # Empieza la lectura
+        except Exception as e:
+            print("❌ Error en conexión automática:", e)
+
+    def _finish_close(self, ok, message):
         self.loading_close.close()
 
         if not ok:
             QMessageBox.warning(self, "Error", f"Error enviando datos:\n{message}")
 
-        # Reset local data
+        # limpiar memoria de la run
         self.local_results = []
         self.run_id = None
 
-        print("🧾 Run cerrada correctamente. Saliendo...")
+        print("✔ Finalizado el envío. Cerrando aplicación.")
 
-        event.accept()
-        self.close()
+        QApplication.quit()  # 🔥 cierre aquí
 
     def check_no_data(self):
+        if self.is_closing:
+            return
         if self.manual_mode_active:
             return
         if getattr(self, "manual_mode_active", False):
@@ -831,7 +843,6 @@ class MainWindow(QMainWindow):
                 return
 
             self.estado_botones_antes_fallo = {
-                "conectar": self.btn_conectar.isEnabled(),
                 "iniciar": self.btn_iniciar.isEnabled(),
                 "detener": self.btn_detener.isEnabled(),
                 "guardar": self.btn_guardar.isEnabled(),
@@ -845,9 +856,10 @@ class MainWindow(QMainWindow):
             self.bloquear_todo(True)
 
     def aviso_manual(self):
+        if self.is_closing:
+            return
         self.manual_mode_active = True
         self.estado_botones_antes_fallo = {
-            "conectar": self.btn_conectar.isEnabled(),
             "iniciar": self.btn_iniciar.isEnabled(),
             "detener": self.btn_detener.isEnabled(),
             "guardar": self.btn_guardar.isEnabled(),
@@ -889,7 +901,6 @@ class MainWindow(QMainWindow):
         print("🟡 Esperando regreso a modo PC...")
 
     def bloquear_todo(self, estado):
-        self.btn_conectar.setEnabled(not estado)
         self.btn_iniciar.setEnabled(not estado)
         self.btn_detener.setEnabled(not estado)
         self.btn_guardar.setEnabled(not estado)
@@ -934,6 +945,8 @@ class MainWindow(QMainWindow):
             print(f"❌ Error consultando API: {e}")
 
     def limpiar_tabla(self):
+        if self.is_closing:
+            return
         if len(self.data_records) == 0:
             self.table.setRowCount(0)
             self.data_records = []
@@ -1007,6 +1020,8 @@ class MainWindow(QMainWindow):
     # FUNCIONES DE GUARDADO Y EXPORTACIÓN
     # =======================================================
     def guardar_dato(self):
+        if self.is_closing:
+            return
         # Crear la run solo cuando hay el PRIMER dato
         if not getattr(self, "run_id", None):
             print("⏳ No hay run activa, creando run...")
@@ -1182,7 +1197,6 @@ class MainWindow(QMainWindow):
         self.lbl_pot.setText(t["labels"]["pot"].format(val=0))
 
         # --- Botones ---
-        self.btn_conectar.setText(t["connect"])
         self.btn_iniciar.setText(t["start"])
         self.btn_detener.setText(t["stop"])
         self.btn_guardar.setText(t["save"])
@@ -1249,7 +1263,6 @@ class MainWindow(QMainWindow):
         self.dial_fan.setEnabled(True)
         self.slider_heat.setEnabled(True)
         self.update_clear_button_state()
-        self.iniciar_lectura()
 
     def iniciar_lectura(self):
         t = self.translations[self.current_lang]
@@ -1352,6 +1365,8 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, t["title"], t["messages"]["reading_stopped"])
 
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
+        if self.is_closing:
+            return
         # Registrar que hemos recibido datos
         self.last_data_time = time.time()
         # Si vuelven los datos, desactivamos el modo manual
@@ -1541,10 +1556,19 @@ class MainWindow(QMainWindow):
     # CIERRE DE PROGRAMA (al pulsar la X)
     # =======================================================
     def closeEvent(self, event):
+        if self.is_closing:
+            event.accept()
+            return
+
+        self.is_closing = True
+
+        self.timer_no_data.stop()
+        self.data_monitoring_active = False
+
         t = self.translations[self.current_lang]["dialogs_close"]
 
         # ===============================================
-        # 🔥 1) SI HAY DATOS → PREGUNTAR ANTES DE SALIR
+        # 1) Confirmación si hay datos
         # ===============================================
         if len(self.data_records) > 0:
             msg = QMessageBox(self)
@@ -1554,7 +1578,6 @@ class MainWindow(QMainWindow):
 
             btn_yes = msg.addButton(t["yes"], QMessageBox.ButtonRole.YesRole)
             btn_no = msg.addButton(t["no"], QMessageBox.ButtonRole.NoRole)
-
             msg.exec()
 
             if msg.clickedButton() == btn_no:
@@ -1562,21 +1585,16 @@ class MainWindow(QMainWindow):
                 return
 
         # ===============================================
-        # 🔒 SAFETY CHECK: FAN y HEAT deben estar en 0
+        # 2) Safety check FAN/HEAT
         # ===============================================
-        fan_value = self.dial_fan.value()
-        heat_value = self.slider_heat.value()
-
-        if fan_value != 0 or heat_value != 0:
+        if self.dial_fan.value() != 0 or self.slider_heat.value() != 0:
             QMessageBox.warning(self, t["safety_title"], t["safety_message"])
             event.ignore()
             return
 
         # ===============================================
-        #  SI LOS DOS SON 0 → continuar cierre normal
+        # 3) Cerrar correctamente hilo y puerto
         # ===============================================
-
-        # cerrar hilo y puerto normalmente
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
@@ -1587,19 +1605,25 @@ class MainWindow(QMainWindow):
                 self.ser.write(b"HEAT000\n")
                 print("[TX] FAN000 (shutdown)")
                 print("[TX] HEAT000 (shutdown)")
-                time.sleep(0.1)  # pequeño delay para asegurar envío
             except:
-                print("⚠️ No se pudo enviar apagado al cerrar.")
+                pass
 
             self.ser.close()
 
-        # NO enviar ni cerrar runs si no hay datos
+        # ===============================================
+        # 4) Si no hay datos → cerrar normal
+        # ===============================================
         if not getattr(self, "run_id", None) or not getattr(self, "local_results", []):
-            print("ℹ️ No hay datos ni run, no se envía nada.")
-            return event.accept()
+            print("No hay datos para enviar. Cerrando.")
+            event.accept()
+            return
 
-        # ENVIAR resultados
-        self.loading = LoadingDialog(
+        # ===============================================
+        # 5) Mostrar GIF y lanzar hilo
+        # ===============================================
+        event.ignore()  # ⛔ EVITA que Qt cierre la app
+
+        self.loading_close = LoadingDialog(
             self,
             (
                 "Cerrando programa..."
@@ -1607,30 +1631,13 @@ class MainWindow(QMainWindow):
                 else "Closing program…"
             ),
         )
-        self.loading.show()
+        self.loading_close.show()
         QApplication.processEvents()
 
-        try:
-            payload = {"run_id": self.run_id, "results": self.local_results}
-            print(f"📡 Enviando {len(self.local_results)} resultados al servidor…")
-
-            response = requests.post(f"{API_BASE_URL}/results/bulk", json=payload)
-
-            if response.status_code == 201:
-                print("✅ Resultados enviados correctamente.")
-                self.local_results = []
-                requests.post(f"{API_BASE_URL}/runs/{self.run_id}/end")
-                print("🧾 Run cerrada correctamente.")
-            else:
-                print("⚠️ Error al enviar results:", response.text)
-
-        except Exception as e:
-            print(f"❌ Error al enviar datos: {e}")
-
-        self.loading.close()
-
-        self.data_monitoring_active = False
-        event.accept()
+        # Hilo para el envío a la API
+        self.close_worker = CloseWorker(self.run_id, self.local_results)
+        self.close_worker.finished.connect(self._finish_close)
+        self.close_worker.start()
 
 
 # =======================================================
