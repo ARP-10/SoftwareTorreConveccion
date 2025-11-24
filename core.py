@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+# core.py - Funciones de comunicación y procesamiento de datos para el equipo IT032
+# -----------------------------------------------------------------------------------------
+# Autor: Alejandra Rodríguez
+# Empresa: DIKOIN
+# Año: 2025
+# Descripción: Módulo encargado de la comunicación serial, detección de puertos y procesamiento de líneas de datos enviadas por el equipo IT032.
+# Derechos de autor reservados.
+# -----------------------------------------------------------------------------------------
+
 import serial
 import serial.tools.list_ports
 import time

@@ -1,5 +1,13 @@
+# -*- coding: utf-8 -*-
 # it032_gui.py - versión con ruleta (fan), calefactor estilizado, gráfica con leyenda lateral y guardado de datos
-# -------------------------------------------------------
+# -----------------------------------------------------------------------------------------
+# Autor: Alejandra Rodríguez
+# Empresa: DIKOIN
+# Año: 2025
+# Descripción: Interfaz gráfica para control y adquisición de datos del equipo IT032.
+# Derechos de autor reservados.
+# -----------------------------------------------------------------------------------------
+
 
 from PyQt6.QtWidgets import (
     QApplication,
@@ -32,7 +40,6 @@ import time
 import pyqtgraph as pg
 import pandas as pd
 from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtGui import QIcon
 from datetime import datetime
 import json
 import requests
