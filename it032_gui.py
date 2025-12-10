@@ -1450,7 +1450,7 @@ class MainWindow(QMainWindow):
         self.lbl_ts.setText(t["ts"].format(val=ts))
         self.lbl_tc.setText(t["tc"].format(val=tc))
         self.lbl_vel.setText(t["vel"].format(val=vel))
-        if pot < 5:
+        if pot < 20:
             pot = 0
         self.lbl_pot.setText(t["pot"].format(val=pot))
 
@@ -1514,15 +1514,24 @@ class MainWindow(QMainWindow):
         if not self.ser:
             return
 
-        value = getattr(self, "_heat_pending_value", None)
-        if value is None:
+        raw_value = getattr(self, "_heat_pending_value", None)
+        if raw_value is None:
             return
 
-        cmd = f"HEAT{value:03d}\n"
+        # Si el slider está a 0 → apagar completamente
+        if raw_value == 0:
+            mapped_value = 0
+        else:
+            # Mapear 1–255 → 140–255 (lineal)
+            mapped_value = int(140 + ((raw_value - 1) / 254) * (255 - 140))
+            # Seguridad por si acaso
+            mapped_value = max(140, min(mapped_value, 255))
+
+        cmd = f"HEAT{mapped_value:03d}\n"
 
         try:
             self.ser.write(cmd.encode())
-            print(f"[TX] {cmd.strip()}")
+            print(f"[TX] {cmd.strip()}  (raw={raw_value}, mapped={mapped_value})")
         except Exception as e:
             print("Error enviando HEAT:", e)
 
