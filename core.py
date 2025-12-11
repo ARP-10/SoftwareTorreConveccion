@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# core.py - Funciones de comunicación y procesamiento de datos para el equipo IT032
 # -----------------------------------------------------------------------------------------
 # Autor: Alejandra Rodríguez
 # Empresa: DIKOIN
