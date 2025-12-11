@@ -47,8 +47,8 @@ import core
 import webbrowser
 
 
-API_BASE_URL = "https://iotnexus.dikoin.com/api" 
-APP_VERSION  = "1.0.0"
+API_BASE_URL = "https://iotnexus.dikoin.com/api"
+APP_VERSION = "1.0.0"
 
 
 class LoadingDialog(QDialog):
@@ -329,7 +329,7 @@ class MainWindow(QMainWindow):
             self.translations = json.load(f)
 
         self.is_closing = False
-        self.update_checked = False 
+        self.update_checked = False
 
         self.current_lang = "en"
 
@@ -775,7 +775,7 @@ class MainWindow(QMainWindow):
         self.timer_no_data.start(1000)
 
         QTimer.singleShot(300, self.auto_connect)
-        
+
     # ===========================
     # COMPROBACIÓN DE VERSIONES
     # ===========================
@@ -802,106 +802,87 @@ class MainWindow(QMainWindow):
     def is_newer_version(self, remote_version: str) -> bool:
         """Devuelve True si remote_version > APP_VERSION."""
         try:
-            return self._parse_version(remote_version) > self._parse_version(APP_VERSION)
+            return self._parse_version(remote_version) > self._parse_version(
+                APP_VERSION
+            )
         except Exception as e:
             print(f"⚠️ Error comparando versiones: {e}")
             return False
-        
+
     def check_for_updates(self):
-        """Consulta la API y, si hay versión nueva, avisa al usuario."""
+        """Checks the API for a new version and alerts the user (English only)."""
 
         try:
             r = requests.get(
                 f"{API_BASE_URL}/software/latest",
                 params={"serial_number": self.serial_number_detected},
+                timeout=5,
             )
         except Exception as e:
-            print(f"⚠️ No se pudo comprobar actualización: {e}")
+            print(f"⚠️ Unable to check for updates: {e}")
             return
 
         if r.status_code != 200:
-            print(f"⚠️ Error al obtener última versión: {r.status_code} - {r.text}")
+            print(f"⚠️ Error retrieving version: {r.status_code} - {r.text}")
             return
 
         try:
             data = r.json()
         except Exception as e:
-            print(f"⚠️ Respuesta JSON de actualización no válida: {e}")
+            print(f"⚠️ Invalid JSON response for update: {e}")
             return
 
         latest_version = data.get("version")
-        download_url   = data.get("download_url")
-        mandatory      = bool(data.get("mandatory", False))
-        changelog      = data.get("changelog") or ""
+        download_url = data.get("download_url")
+        mandatory = bool(data.get("mandatory", False))
+        changelog = data.get("changelog") or ""
 
         if not latest_version:
             return
 
-        # ¿Es realmente más nueva?
+        # Compare versions
         if not self.is_newer_version(latest_version):
-            print(f"✅ Versión actual ({APP_VERSION}) ya está al día.")
+            print(f"✅ Current version ({APP_VERSION}) is up to date.")
             return
 
         # ===============================
-        # Construir texto según idioma
+        # ⚠️ Always in English
         # ===============================
-        if self.current_lang == "es":
-            title = "Actualización disponible"
-            text = (
-                f"Hay una nueva versión del programa.\n\n"
-                f"Versión instalada: {APP_VERSION}\n"
-                f"Última versión: {latest_version}\n\n"
-            )
-            if changelog:
-                text += f"Notas de la versión:\n{changelog}\n\n"
+        title = "Update available"
+        text = (
+            f"A new version of the software is available.\n\n"
+            f"Current version: {APP_VERSION}\n"
+            f"Latest version: {latest_version}\n\n"
+        )
 
-            if mandatory:
-                text += "Esta actualización es obligatoria. La aplicación se cerrará para que puedas instalarla."
-                buttons = QMessageBox.StandardButton.Ok
-            else:
-                text += "¿Quieres abrir la página de descarga ahora?"
-                buttons = (
-                    QMessageBox.StandardButton.Yes
-                    | QMessageBox.StandardButton.No
-                )
+        if changelog:
+            text += f"Release notes:\n{changelog}\n\n"
+
+        if mandatory:
+            text += (
+                "This update is mandatory. The application will now close "
+                "so you can install it."
+            )
+            buttons = QMessageBox.StandardButton.Ok
         else:
-            title = "Update available"
-            text = (
-                f"A new version of the software is available.\n\n"
-                f"Current version: {APP_VERSION}\n"
-                f"Latest version: {latest_version}\n\n"
-            )
-            if changelog:
-                text += f"Release notes:\n{changelog}\n\n"
-
-            if mandatory:
-                text += "This update is mandatory. The application will close so you can install it."
-                buttons = QMessageBox.StandardButton.Ok
-            else:
-                text += "Do you want to open the download page now?"
-                buttons = (
-                    QMessageBox.StandardButton.Yes
-                    | QMessageBox.StandardButton.No
-                )
+            text += "Do you want to open the download page now?"
+            buttons = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
 
         # ===============================
-        # Mostrar diálogo
+        # Show dialog
         # ===============================
         reply = QMessageBox.question(self, title, text, buttons)
 
         if mandatory:
-            # Solo hay botón OK
             if download_url:
                 webbrowser.open(download_url)
-            # cerramos la app para forzar la actualización
             self.close()
             return
 
-        # Opcional
+        # Non-mandatory: user chose YES → abrir página y cerrar app también
         if reply == QMessageBox.StandardButton.Yes and download_url:
             webbrowser.open(download_url)
-
-
+            self.close()
 
     def auto_connect(self):
         try:
@@ -1437,7 +1418,7 @@ class MainWindow(QMainWindow):
                 f"{API_BASE_URL}/runs/start",
                 json={
                     "machine_id": self.machine_id,
-                    "app_version": APP_VERSION,  
+                    "app_version": APP_VERSION,
                 },
             )
             if response.status_code == 201:
@@ -1797,7 +1778,7 @@ class ResultsWindow(QWidget):
         self.setObjectName("ResultsTable")
         self.translations = translations
         self.current_lang = current_lang
-        
+
         self.update_checked = False
 
         # Obtener traducciones activas
