@@ -329,6 +329,7 @@ class MainWindow(QMainWindow):
             self.translations = json.load(f)
 
         self.is_closing = False
+        self.update_checked = False 
 
         self.current_lang = "en"
 
@@ -808,16 +809,11 @@ class MainWindow(QMainWindow):
         
     def check_for_updates(self):
         """Consulta la API y, si hay versión nueva, avisa al usuario."""
-        # Necesitamos machine_id para preguntar por su versión específica
-        if not hasattr(self, "machine_id"):
-            print("ℹ️ No hay machine_id todavía, no se comprueba actualización.")
-            return
 
         try:
             r = requests.get(
                 f"{API_BASE_URL}/software/latest",
-                params={"machine_id": self.machine_id},
-                timeout=5,
+                params={"serial_number": self.serial_number_detected},
             )
         except Exception as e:
             print(f"⚠️ No se pudo comprobar actualización: {e}")
