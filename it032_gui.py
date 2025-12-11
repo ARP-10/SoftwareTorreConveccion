@@ -816,7 +816,7 @@ class MainWindow(QMainWindow):
         try:
             r = requests.get(
                 f"{API_BASE_URL}/software/latest",
-                params={"machine_id": self.machine_id, "app_name": APP_NAME},
+                params={"machine_id": self.machine_id},
                 timeout=5,
             )
         except Exception as e:
