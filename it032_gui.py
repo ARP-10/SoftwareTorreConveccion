@@ -617,7 +617,7 @@ class MainWindow(QMainWindow):
         self.btn_about = QToolButton()
         self.btn_about.setObjectName("btn_about")
         self.btn_about.setText(t.get("about_button", "About"))
-        self.btn_about.setIcon(QIcon("icons/info.png"))  # opcional, pero recomendado
+        self.btn_about.setIcon(QIcon("icons/about.png"))  
         self.btn_about.setIconSize(QSize(24, 24))
         self.btn_about.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
 
