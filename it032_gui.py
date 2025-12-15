@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QLabel,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize, QSettings
 from PyQt6.QtGui import QFont, QIcon, QMovie
 import sys
 import time
@@ -331,7 +331,9 @@ class MainWindow(QMainWindow):
         self.is_closing = False
         self.update_checked = False 
 
-        self.current_lang = "en"
+        self.settings = QSettings()
+        self.current_lang = self.settings.value("ui/language", "en")
+
 
         t = self.translations[self.current_lang]
         self.setWindowTitle(t["title"])
@@ -808,7 +810,7 @@ class MainWindow(QMainWindow):
             return False
         
     def check_for_updates(self):
-        """Checks the API for a new version and alerts the user (English only)."""
+        """Checks the API for a new version and alerts the user in the saved language."""
 
         try:
             r = requests.get(
@@ -833,54 +835,75 @@ class MainWindow(QMainWindow):
         latest_version = data.get("version")
         download_url = data.get("download_url")
         mandatory = bool(data.get("mandatory", False))
-        changelog = data.get("changelog") or ""
+
+        # --- changelog puede venir como dict (JSON) o string (compatibilidad) ---
+        changelog_obj = data.get("changelog")
+        changelog = ""
+
+        if isinstance(changelog_obj, dict):
+            # idioma preferido -> fallback a en -> fallback al primer valor
+            changelog = (
+                changelog_obj.get(self.current_lang)
+                or changelog_obj.get("en")
+                or next(iter(changelog_obj.values()), "")
+            )
+        else:
+            changelog = changelog_obj or ""
 
         if not latest_version:
             return
 
-        # Compare versions
         if not self.is_newer_version(latest_version):
             print(f"✅ Current version ({APP_VERSION}) is up to date.")
             return
 
         # ===============================
-        # ⚠️ Always in English
+        # Textos traducidos desde translations.json
         # ===============================
-        title = "Update available"
-        text = (
-            f"A new version of the software is available.\n\n"
-            f"Current version: {APP_VERSION}\n"
-            f"Latest version: {latest_version}\n\n"
-        )
+        t = self.translations.get(self.current_lang, self.translations.get("en", {}))
+
+        # Crea estas keys en translations.json (recomendado)
+        # update_dialog: { title, body, release_notes, mandatory_msg, optional_msg }
+        ud = t.get("update_dialog", {})
+
+        title = ud.get("title", "Update available")
+
+        text = ud.get(
+            "body",
+            "A new version of the software is available.\n\n"
+            "Current version: {current}\n"
+            "Latest version: {latest}\n\n",
+        ).format(current=APP_VERSION, latest=latest_version)
 
         if changelog:
-            text += f"Release notes:\n{changelog}\n\n"
+            text += ud.get("release_notes", "Release notes:\n{changelog}\n\n").format(
+                changelog=changelog
+            )
 
         if mandatory:
-            text += (
-                "This update is mandatory. The application will now close "
-                "so you can install it."
+            text += ud.get(
+                "mandatory_msg",
+                "This update is mandatory. The application will now close so you can install it.",
             )
             buttons = QMessageBox.StandardButton.Ok
-        else:
-            text += "Do you want to open the download page now?"
-            buttons = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-
-        # ===============================
-        # Show dialog
-        # ===============================
-        reply = QMessageBox.question(self, title, text, buttons)
-
-        if mandatory:
+            reply = QMessageBox.information(self, title, text, buttons)
             if download_url:
                 webbrowser.open(download_url)
             self.close()
             return
+        else:
+            text += ud.get(
+                "optional_msg",
+                "Do you want to open the download page now?",
+            )
+            buttons = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
 
-        # Non-mandatory: user chose YES → abrir página y cerrar app también
-        if reply == QMessageBox.StandardButton.Yes and download_url:
-            webbrowser.open(download_url)
-            self.close()
+            reply = QMessageBox.question(self, title, text, buttons)
+
+            if reply == QMessageBox.StandardButton.Yes and download_url:
+                webbrowser.open(download_url)
+                self.close()
+
 
 
     def auto_connect(self):
@@ -1357,6 +1380,8 @@ class MainWindow(QMainWindow):
 
         self.update_clear_button_state()
         self.language_change = False
+        self.settings.setValue("ui/language", lang)
+
 
     # =======================================================
     # FUNCIONES PRINCIPALES
@@ -1875,6 +1900,10 @@ def load_stylesheet(app, path="style.qss"):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    
+    QApplication.setOrganizationName("DIKOIN")
+    QApplication.setApplicationName("IT032")
+
 
     # Estilo base “WindowsVista” (permite que QSS controle títulos y botones)
     from PyQt6.QtWidgets import QStyleFactory
