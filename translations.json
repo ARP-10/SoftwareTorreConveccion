@@ -84,11 +84,15 @@
     },
     "update_dialog": {
       "title": "Actualización disponible",
+      "no_serial_title": "Actualizaciones",
+      "no_serial_msg": "No se detecta comunicación con el equipo.\n\nVerifica que el equipo esté correctamente conectado por USB.",
       "body": "Hay una nueva versión del software disponible.\n\nVersión actual: {current}\nÚltima versión: {latest}\n\n",
       "release_notes": "Notas de versión:\n{changelog}\n\n",
       "mandatory_msg": "Esta actualización es obligatoria. La aplicación se cerrará para que puedas instalarla.",
       "optional_msg": "¿Quieres abrir la página de descarga ahora?"
-    }
+    },
+    "about_button": "Acerca de",
+    "check_updates": "Buscar actualizaciones"
   },
   "en": {
     "lang_en": "English",
@@ -175,10 +179,14 @@
     },
     "update_dialog": {
       "title": "Update available",
+      "no_serial_title": "Updates",
+      "no_serial_msg": "No communication with the device was detected.\n\nPlease verify that the device is properly connected via USB.",
       "body": "A new version of the software is available.\n\nCurrent version: {current}\nLatest version: {latest}\n\n",
       "release_notes": "Release notes:\n{changelog}\n\n",
       "mandatory_msg": "This update is mandatory. The application will now close so you can install it.",
       "optional_msg": "Do you want to open the download page now?"
-    }
+    },
+    "about_button": "About",
+    "check_updates": "Check for updates"
   }
 }

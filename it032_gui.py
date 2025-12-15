@@ -610,6 +610,28 @@ class MainWindow(QMainWindow):
 
         self.btn_language.setMenu(self.menu_language)
         self.btn_language.setFixedHeight(32)
+        
+        # ==========================
+        # Botón ABOUT (menú)
+        # ==========================
+        self.btn_about = QToolButton()
+        self.btn_about.setObjectName("btn_about")
+        self.btn_about.setText(t.get("about_button", "About"))
+        self.btn_about.setIcon(QIcon("icons/info.png"))  # opcional, pero recomendado
+        self.btn_about.setIconSize(QSize(24, 24))
+        self.btn_about.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+
+        # MUY IMPORTANTE para que salga el menú al pulsar
+        self.btn_about.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        self.menu_about = QMenu(self)
+        self.action_check_updates = self.menu_about.addAction(
+            t.get("check_updates", "Check for updates")
+        )
+        self.action_check_updates.triggered.connect(self.check_for_updates)
+        self.btn_about.setMenu(self.menu_about)
+        self.btn_about.setFixedHeight(32)
+
 
         # =======================================================
         # BOTONES GENERALES
@@ -637,6 +659,8 @@ class MainWindow(QMainWindow):
         h_topbar = QHBoxLayout()
         h_topbar.setContentsMargins(22, 6, 0, 0)
         h_topbar.addWidget(self.btn_language, alignment=Qt.AlignmentFlag.AlignLeft)
+        h_topbar.addSpacing(12)
+        h_topbar.addWidget(self.btn_about, alignment=Qt.AlignmentFlag.AlignLeft) 
         h_topbar.addStretch()
 
         # --- Parte superior: lecturas (izq) y control (der)
@@ -811,6 +835,19 @@ class MainWindow(QMainWindow):
         
     def check_for_updates(self):
         """Checks the API for a new version and alerts the user in the saved language."""
+        if not hasattr(self, "serial_number_detected"):
+            t = self.translations.get(self.current_lang, self.translations.get("en", {}))
+            ud = t.get("update_dialog", {})
+
+            title = ud.get("no_serial_title", ud.get("title", "Updates"))
+            msg = ud.get(
+                "no_serial_msg",
+                "Serial number not detected yet. Connect and start reading first.",
+            )
+
+            QMessageBox.information(self, title, msg)
+            return
+
 
         try:
             r = requests.get(
@@ -1381,6 +1418,9 @@ class MainWindow(QMainWindow):
         self.update_clear_button_state()
         self.language_change = False
         self.settings.setValue("ui/language", lang)
+        self.btn_about.setText(t.get("about_button", "About"))
+        self.action_check_updates.setText(t.get("check_updates", "Check for updates"))
+
 
 
     # =======================================================
