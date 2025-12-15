@@ -18,7 +18,7 @@ READ_DELAY = 0.5
 
 
 def detectar_puerto():
-    print("🔍 Buscando puerto del equipo IT03.2...")
+    print("🔍 Buscando puerto del equipo...")
     puertos = serial.tools.list_ports.comports()
     if not puertos:
         print("❌ No se encontraron puertos disponibles.")
