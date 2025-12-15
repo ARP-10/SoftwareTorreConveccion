@@ -799,8 +799,64 @@ class MainWindow(QMainWindow):
         self.timer_no_data = QTimer()
         self.timer_no_data.timeout.connect(self.check_no_data)
         self.timer_no_data.start(1000)
+        
+        # === AUTO-REINTENTO CONEXIÓN SERIE ===
+        self.auto_connect_active = True
+        self.auto_connect_interval_ms = 1500  # ajusta a gusto (1000–2000 va bien)
+        self.auto_connect_alert_shown = False
 
-        QTimer.singleShot(300, self.auto_connect)
+        self.timer_auto_connect = QTimer(self)
+        self.timer_auto_connect.timeout.connect(self.try_auto_connect)
+        self.timer_auto_connect.start(self.auto_connect_interval_ms)
+
+
+    def try_auto_connect(self):
+        # No reintentar si estamos cerrando o ya hay conexión
+        if self.is_closing:
+            return
+        if self.ser:  # ya conectado
+            return
+        if not getattr(self, "auto_connect_active", True):
+            return
+
+        t = self.translations[self.current_lang]
+
+        port = core.detectar_puerto()
+
+        if not port:
+            # Mostrar aviso SOLO una vez (opcional)
+            if not self.auto_connect_alert_shown:
+                self.auto_connect_alert_shown = True
+                # Mejor "information" (no warning) para no asustar
+                QMessageBox.information(
+                    self,
+                    t["title"],
+                    "Verifica que el equipo esté conectado por USB."
+                    if self.current_lang == "es"
+                    else "Please verify the device is connected via USB.",
+                )
+            return
+
+        # Si encontramos puerto, conectamos
+        try:
+            self.ser = core.serial.Serial(port, core.BAUD, timeout=core.COM_TIMEOUT)
+        except Exception as e:
+            print("⚠️ No se pudo abrir el puerto:", e)
+            return
+
+        # Ya conectado: parar el timer o dejarlo (yo prefiero pararlo)
+        self.timer_auto_connect.stop()
+
+        QMessageBox.information(self, t["title"], t["messages"]["connected"].format(port=port))
+
+        self.btn_conectar.setEnabled(False)
+        self.dial_fan.setEnabled(True)
+        self.slider_heat.setEnabled(True)
+        self.update_clear_button_state()
+
+        # Arrancar lectura automáticamente
+        self.iniciar_lectura()
+
         
     # ===========================
     # COMPROBACIÓN DE VERSIONES
