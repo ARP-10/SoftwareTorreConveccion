@@ -38,13 +38,27 @@ import time
 import pyqtgraph as pg
 import pandas as pd
 from PyQt6.QtSvgWidgets import QSvgWidget
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import requests
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor
 import core
 import webbrowser
+import base64
+from pathlib import Path
+import hmac
+import hashlib
+
+
+_SECRET_MASK_B64 = "gAAqoNAXSeddJ3OhyDYWhlC0LVMRVhG9/pFXPX1R6tg="
+_SECRET_XOR_B64  = "dT3O/E/1m+YPfX0LViE1D+62iz3g1PnY7BU6VV7J1M0="
+
+def get_embedded_secret_b64url() -> str:
+    mask = base64.b64decode(_SECRET_MASK_B64)
+    xval = base64.b64decode(_SECRET_XOR_B64)
+    secret_bytes = bytes(a ^ b for a, b in zip(xval, mask))
+    return base64.urlsafe_b64encode(secret_bytes).decode("ascii").rstrip("=")
 
 
 API_BASE_URL = "https://iotnexus.dikoin.com/api" 
@@ -808,6 +822,133 @@ class MainWindow(QMainWindow):
         self.timer_auto_connect = QTimer(self)
         self.timer_auto_connect.timeout.connect(self.try_auto_connect)
         self.timer_auto_connect.start(self.auto_connect_interval_ms)
+
+    @staticmethod
+    def _parse_iso_dt(s: str):
+        if not s or not isinstance(s, str):
+            return None
+        s = s.strip()
+        try:
+            if s.endswith("Z"):
+                return datetime.fromisoformat(s[:-1]).replace(tzinfo=timezone.utc)
+            dt = datetime.fromisoformat(s)
+            return dt
+        except Exception:
+            try:
+                return datetime.strptime(s, "%Y-%m-%d")
+            except Exception:
+                return None
+
+    @staticmethod
+    def _check_license_dates(lic: dict):
+        start_keys = ["valid_from", "start_date", "issued_at", "created_at"]
+        end_keys   = ["valid_to", "end_date", "expires_at", "expires_on", "expiry_date"]
+
+        start_dt = None
+        end_dt = None
+
+        for k in start_keys:
+            if k in lic:
+                start_dt = MainWindow._parse_iso_dt(lic.get(k))
+                if start_dt:
+                    break
+
+        for k in end_keys:
+            if k in lic:
+                end_dt = MainWindow._parse_iso_dt(lic.get(k))
+                if end_dt:
+                    break
+
+        # Si no hay fechas, no bloqueamos
+        if not start_dt and not end_dt:
+            return
+
+        now_utc = datetime.now(timezone.utc)
+
+        def to_utc(dt):
+            if dt is None:
+                return None
+            # si viene naive, la tratamos como local (si prefieres UTC estricto, se cambia)
+            if dt.tzinfo is None:
+                return dt
+            return dt.astimezone(timezone.utc)
+
+        start_cmp = to_utc(start_dt)
+        end_cmp = to_utc(end_dt)
+
+        if start_cmp and ((start_cmp.tzinfo is None and datetime.now() < start_cmp) or
+                          (start_cmp.tzinfo is not None and now_utc < start_cmp)):
+            raise RuntimeError(f"Licencia aún no válida (empieza: {start_dt}).")
+
+        if end_cmp and ((end_cmp.tzinfo is None and datetime.now() > end_cmp) or
+                        (end_cmp.tzinfo is not None and now_utc > end_cmp)):
+            raise RuntimeError(f"Licencia caducada (caducó: {end_dt}).")
+
+    def verify_local_license(self, serial_number: str):
+        try:
+            # carpeta donde debe estar el .lic
+            lic_dir = Path(QSettings().fileName()).parent()
+            lic_path = lic_dir / f"IT032_{serial_number}.lic"
+
+            if not lic_path.exists():
+                raise RuntimeError("No se encontró el archivo de licencia (.lic).")
+
+            try:
+                lic_data = json.loads(lic_path.read_text(encoding="utf-8"))
+            except Exception as e:
+                raise RuntimeError(f"El .lic no es JSON válido: {e}")
+
+            # 1) SERIAL (lo importante)
+            serial_in_file = (
+                lic_data.get("machine_serial")
+                or lic_data.get("serial")
+                or lic_data.get("serial_number")
+            )
+            if str(serial_in_file) != str(serial_number):
+                raise RuntimeError(
+                    "El .lic no corresponde a esta máquina.\n"
+                    f"Serial en archivo: {serial_in_file}\n"
+                    f"Serial detectado: {serial_number}"
+                )
+
+            # 2) FECHAS (si existen)
+            MainWindow._check_license_dates(lic_data)
+
+            # 3) FIRMA (sin license_core)
+            # Esperamos lic_data["signature"] = base64url(HMAC_SHA256(secret, canonical_json_sin_signature))
+            sig = lic_data.get("signature") or lic_data.get("sig")
+            if not sig:
+                raise RuntimeError("El .lic no contiene firma ('signature').")
+
+            # obtener secreto (base64url) -> bytes
+            secret_b64url = get_embedded_secret_b64url()
+            pad = "=" * (-len(secret_b64url) % 4)
+            secret_bytes = base64.urlsafe_b64decode(secret_b64url + pad)
+
+            # canonical JSON sin signature
+            payload = dict(lic_data)
+            payload.pop("signature", None)
+            payload.pop("sig", None)
+
+            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+            mac = hmac.new(secret_bytes, canonical, hashlib.sha256).digest()
+            mac_b64url = base64.urlsafe_b64encode(mac).decode("ascii").rstrip("=")
+
+            if not hmac.compare_digest(mac_b64url, str(sig).strip()):
+                raise RuntimeError("Firma de licencia inválida (HMAC no coincide).")
+
+            print("✅ Licencia válida (serial + fechas + firma)")
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Licencia inválida",
+                f"No se pudo validar la licencia:\n\n{e}",
+            )
+            self.bloquear_todo(True)
+            self.close()
+
 
 
     def try_auto_connect(self):
@@ -1679,7 +1820,13 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "serial_number_detected"):
             self.serial_number_detected = serial_number
             print(f"🔍 Serial detectado: {serial_number}")
+
+            # 🔐 VERIFICAR LICENCIA LOCAL
+            self.verify_local_license(serial_number)
+
+            # 🌐 API (opcional, no bloquea)
             self.verify_machine_with_api(serial_number)
+
 
         # --- Actualización visual normal ---
         t = self.translations[self.current_lang]["labels"]
