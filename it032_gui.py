@@ -46,13 +46,15 @@ from PyQt6.QtGui import QColor
 import core
 import webbrowser
 import base64
-from pathlib import Path
 import hmac
 import hashlib
+from pathlib import Path as PPath
+import sys
+import os
 
+_SECRET_MASK_B64 = "doipquDPxSVrMQN3X3N+/a+vNdTNXBSY/E28I72eZaU="
+_SECRET_XOR_B64 = "g7VN9n8tZyQ5aw3dwWRddBGtk7+83vz97snRS54GW7A="
 
-_SECRET_MASK_B64 = "gAAqoNAXSeddJ3OhyDYWhlC0LVMRVhG9/pFXPX1R6tg="
-_SECRET_XOR_B64  = "dT3O/E/1m+YPfX0LViE1D+62iz3g1PnY7BU6VV7J1M0="
 
 def get_embedded_secret_b64url() -> str:
     mask = base64.b64decode(_SECRET_MASK_B64)
@@ -61,8 +63,8 @@ def get_embedded_secret_b64url() -> str:
     return base64.urlsafe_b64encode(secret_bytes).decode("ascii").rstrip("=")
 
 
-API_BASE_URL = "https://iotnexus.dikoin.com/api" 
-APP_VERSION  = "1.0.0"
+API_BASE_URL = "https://iotnexus.dikoin.com/api"
+APP_VERSION = "1.0.0"
 
 
 class LoadingDialog(QDialog):
@@ -343,11 +345,10 @@ class MainWindow(QMainWindow):
             self.translations = json.load(f)
 
         self.is_closing = False
-        self.update_checked = False 
+        self.update_checked = False
 
         self.settings = QSettings()
         self.current_lang = self.settings.value("ui/language", "en")
-
 
         t = self.translations[self.current_lang]
         self.setWindowTitle(t["title"])
@@ -624,14 +625,14 @@ class MainWindow(QMainWindow):
 
         self.btn_language.setMenu(self.menu_language)
         self.btn_language.setFixedHeight(32)
-        
+
         # ==========================
         # Botón ABOUT (menú)
         # ==========================
         self.btn_about = QToolButton()
         self.btn_about.setObjectName("btn_about")
         self.btn_about.setText(t.get("about_button", "About"))
-        self.btn_about.setIcon(QIcon("icons/about.png"))  
+        self.btn_about.setIcon(QIcon("icons/about.png"))
         self.btn_about.setIconSize(QSize(24, 24))
         self.btn_about.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
 
@@ -645,7 +646,6 @@ class MainWindow(QMainWindow):
         self.action_check_updates.triggered.connect(self.check_for_updates)
         self.btn_about.setMenu(self.menu_about)
         self.btn_about.setFixedHeight(32)
-
 
         # =======================================================
         # BOTONES GENERALES
@@ -674,7 +674,7 @@ class MainWindow(QMainWindow):
         h_topbar.setContentsMargins(22, 6, 0, 0)
         h_topbar.addWidget(self.btn_language, alignment=Qt.AlignmentFlag.AlignLeft)
         h_topbar.addSpacing(12)
-        h_topbar.addWidget(self.btn_about, alignment=Qt.AlignmentFlag.AlignLeft) 
+        h_topbar.addWidget(self.btn_about, alignment=Qt.AlignmentFlag.AlignLeft)
         h_topbar.addStretch()
 
         # --- Parte superior: lecturas (izq) y control (der)
@@ -813,7 +813,7 @@ class MainWindow(QMainWindow):
         self.timer_no_data = QTimer()
         self.timer_no_data.timeout.connect(self.check_no_data)
         self.timer_no_data.start(1000)
-        
+
         # === AUTO-REINTENTO CONEXIÓN SERIE ===
         self.auto_connect_active = True
         self.auto_connect_interval_ms = 1500  # ajusta a gusto (1000–2000 va bien)
@@ -842,7 +842,7 @@ class MainWindow(QMainWindow):
     @staticmethod
     def _check_license_dates(lic: dict):
         start_keys = ["valid_from", "start_date", "issued_at", "created_at"]
-        end_keys   = ["valid_to", "end_date", "expires_at", "expires_on", "expiry_date"]
+        end_keys = ["valid_to", "end_date", "expires_at", "expires_on", "expiry_date"]
 
         start_dt = None
         end_dt = None
@@ -876,61 +876,118 @@ class MainWindow(QMainWindow):
         start_cmp = to_utc(start_dt)
         end_cmp = to_utc(end_dt)
 
-        if start_cmp and ((start_cmp.tzinfo is None and datetime.now() < start_cmp) or
-                          (start_cmp.tzinfo is not None and now_utc < start_cmp)):
+        if start_cmp and (
+            (start_cmp.tzinfo is None and datetime.now() < start_cmp)
+            or (start_cmp.tzinfo is not None and now_utc < start_cmp)
+        ):
             raise RuntimeError(f"Licencia aún no válida (empieza: {start_dt}).")
 
-        if end_cmp and ((end_cmp.tzinfo is None and datetime.now() > end_cmp) or
-                        (end_cmp.tzinfo is not None and now_utc > end_cmp)):
+        if end_cmp and (
+            (end_cmp.tzinfo is None and datetime.now() > end_cmp)
+            or (end_cmp.tzinfo is not None and now_utc > end_cmp)
+        ):
             raise RuntimeError(f"Licencia caducada (caducó: {end_dt}).")
+
+    def _candidate_license_paths(self, serial_number: str):
+        serial_number = str(serial_number).strip()
+        fname = f"07032_{serial_number}.lic"
+
+        paths = []
+
+        # 1) misma carpeta del ejecutable (lo ideal en producción)
+        if getattr(sys, "frozen", False):
+            base_dir = PPath(sys.executable).parent
+        else:
+            base_dir = PPath(__file__).parent
+        paths.append(base_dir / fname)
+
+        # 2) carpeta guardada previamente por el usuario (QSettings)
+        saved = self.settings.value("license/path", "")
+        if saved:
+            paths.append(PPath(saved))
+
+        # 3) %APPDATA%\DIKOIN\07032\
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            paths.append(PPath(appdata) / "DIKOIN" / "07032" / fname)
+
+        # 4) %PROGRAMDATA%\DIKOIN\07032\  (para todos los usuarios)
+        progdata = os.environ.get("PROGRAMDATA")
+        if progdata:
+            paths.append(PPath(progdata) / "DIKOIN" / "07032" / fname)
+
+        # 5) C:\Users\<usuario>\07032\ (tu caso de pruebas, pero portable)
+        paths.append(PPath.home() / "07032" / fname)
+
+        # quitar duplicados
+        uniq = []
+        for p in paths:
+            if p not in uniq:
+                uniq.append(p)
+        return uniq
 
     def verify_local_license(self, serial_number: str):
         try:
-            # carpeta donde debe estar el .lic
-            lic_dir = Path(QSettings().fileName()).parent()
-            lic_path = lic_dir / f"IT032_{serial_number}.lic"
+            serial_number = str(serial_number).strip()
 
-            if not lic_path.exists():
-                raise RuntimeError("No se encontró el archivo de licencia (.lic).")
+            # 1) buscar en rutas candidatas
+            lic_path = None
+            tried = []
+            for p in self._candidate_license_paths(serial_number):
+                tried.append(str(p))
+                if p.exists():
+                    lic_path = p
+                    break
 
+            # 2) si no aparece, pedir al usuario que seleccione el .lic una vez
+            if lic_path is None:
+                selected, _ = QFileDialog.getOpenFileName(
+                    self,
+                    "Selecciona tu licencia (.lic)",
+                    str(PPath.home()),
+                    "License Files (*.lic);;All Files (*.*)",
+                )
+                if not selected:
+                    raise RuntimeError("No se seleccionó ninguna licencia.")
+                lic_path = PPath(selected)
+                # guardar para próximas veces
+                self.settings.setValue("license/path", str(lic_path))
+
+            # 3) leer y validar (tu lógica)
             try:
                 lic_data = json.loads(lic_path.read_text(encoding="utf-8"))
             except Exception as e:
                 raise RuntimeError(f"El .lic no es JSON válido: {e}")
 
-            # 1) SERIAL (lo importante)
             serial_in_file = (
                 lic_data.get("machine_serial")
                 or lic_data.get("serial")
                 or lic_data.get("serial_number")
             )
-            if str(serial_in_file) != str(serial_number):
+            if str(serial_in_file).strip() != serial_number:
                 raise RuntimeError(
                     "El .lic no corresponde a esta máquina.\n"
                     f"Serial en archivo: {serial_in_file}\n"
                     f"Serial detectado: {serial_number}"
                 )
 
-            # 2) FECHAS (si existen)
             MainWindow._check_license_dates(lic_data)
 
-            # 3) FIRMA (sin license_core)
-            # Esperamos lic_data["signature"] = base64url(HMAC_SHA256(secret, canonical_json_sin_signature))
             sig = lic_data.get("signature") or lic_data.get("sig")
             if not sig:
                 raise RuntimeError("El .lic no contiene firma ('signature').")
 
-            # obtener secreto (base64url) -> bytes
             secret_b64url = get_embedded_secret_b64url()
             pad = "=" * (-len(secret_b64url) % 4)
             secret_bytes = base64.urlsafe_b64decode(secret_b64url + pad)
 
-            # canonical JSON sin signature
             payload = dict(lic_data)
             payload.pop("signature", None)
             payload.pop("sig", None)
 
-            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            canonical = json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
 
             mac = hmac.new(secret_bytes, canonical, hashlib.sha256).digest()
             mac_b64url = base64.urlsafe_b64encode(mac).decode("ascii").rstrip("=")
@@ -938,7 +995,7 @@ class MainWindow(QMainWindow):
             if not hmac.compare_digest(mac_b64url, str(sig).strip()):
                 raise RuntimeError("Firma de licencia inválida (HMAC no coincide).")
 
-            print("✅ Licencia válida (serial + fechas + firma)")
+            print(f"✅ Licencia válida: {lic_path}")
 
         except Exception as e:
             QMessageBox.critical(
@@ -948,8 +1005,6 @@ class MainWindow(QMainWindow):
             )
             self.bloquear_todo(True)
             self.close()
-
-
 
     def try_auto_connect(self):
         # No reintentar si estamos cerrando o ya hay conexión
@@ -972,9 +1027,11 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(
                     self,
                     t["title"],
-                    "Verifica que el equipo esté conectado por USB."
-                    if self.current_lang == "es"
-                    else "Please verify the device is connected via USB.",
+                    (
+                        "Verifica que el equipo esté conectado por USB."
+                        if self.current_lang == "es"
+                        else "Please verify the device is connected via USB."
+                    ),
                 )
             return
 
@@ -988,7 +1045,9 @@ class MainWindow(QMainWindow):
         # Ya conectado: parar el timer o dejarlo (yo prefiero pararlo)
         self.timer_auto_connect.stop()
 
-        QMessageBox.information(self, t["title"], t["messages"]["connected"].format(port=port))
+        QMessageBox.information(
+            self, t["title"], t["messages"]["connected"].format(port=port)
+        )
 
         self.btn_conectar.setEnabled(False)
         self.dial_fan.setEnabled(True)
@@ -998,7 +1057,6 @@ class MainWindow(QMainWindow):
         # Arrancar lectura automáticamente
         self.iniciar_lectura()
 
-        
     # ===========================
     # COMPROBACIÓN DE VERSIONES
     # ===========================
@@ -1025,15 +1083,19 @@ class MainWindow(QMainWindow):
     def is_newer_version(self, remote_version: str) -> bool:
         """Devuelve True si remote_version > APP_VERSION."""
         try:
-            return self._parse_version(remote_version) > self._parse_version(APP_VERSION)
+            return self._parse_version(remote_version) > self._parse_version(
+                APP_VERSION
+            )
         except Exception as e:
             print(f"⚠️ Error comparando versiones: {e}")
             return False
-        
+
     def check_for_updates(self):
         """Checks the API for a new version and alerts the user in the saved language."""
         if not hasattr(self, "serial_number_detected"):
-            t = self.translations.get(self.current_lang, self.translations.get("en", {}))
+            t = self.translations.get(
+                self.current_lang, self.translations.get("en", {})
+            )
             ud = t.get("update_dialog", {})
 
             title = ud.get("no_serial_title", ud.get("title", "Updates"))
@@ -1044,7 +1106,6 @@ class MainWindow(QMainWindow):
 
             QMessageBox.information(self, title, msg)
             return
-
 
         try:
             r = requests.get(
@@ -1137,8 +1198,6 @@ class MainWindow(QMainWindow):
             if reply == QMessageBox.StandardButton.Yes and download_url:
                 webbrowser.open(download_url)
                 self.close()
-
-
 
     def auto_connect(self):
         try:
@@ -1618,8 +1677,6 @@ class MainWindow(QMainWindow):
         self.btn_about.setText(t.get("about_button", "About"))
         self.action_check_updates.setText(t.get("check_updates", "Check for updates"))
 
-
-
     # =======================================================
     # FUNCIONES PRINCIPALES
     # =======================================================
@@ -1679,7 +1736,7 @@ class MainWindow(QMainWindow):
                 f"{API_BASE_URL}/runs/start",
                 json={
                     "machine_id": self.machine_id,
-                    "app_version": APP_VERSION,  
+                    "app_version": APP_VERSION,
                 },
             )
             if response.status_code == 201:
@@ -1826,7 +1883,6 @@ class MainWindow(QMainWindow):
 
             # 🌐 API (opcional, no bloquea)
             self.verify_machine_with_api(serial_number)
-
 
         # --- Actualización visual normal ---
         t = self.translations[self.current_lang]["labels"]
@@ -2045,7 +2101,7 @@ class ResultsWindow(QWidget):
         self.setObjectName("ResultsTable")
         self.translations = translations
         self.current_lang = current_lang
-        
+
         self.update_checked = False
 
         # Obtener traducciones activas
@@ -2143,10 +2199,9 @@ def load_stylesheet(app, path="style.qss"):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    
-    QApplication.setOrganizationName("DIKOIN")
-    QApplication.setApplicationName("IT032")
 
+    QApplication.setOrganizationName("DIKOIN")
+    QApplication.setApplicationName("07032")
 
     # Estilo base “WindowsVista” (permite que QSS controle títulos y botones)
     from PyQt6.QtWidgets import QStyleFactory
