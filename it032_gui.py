@@ -643,7 +643,9 @@ class MainWindow(QMainWindow):
         self.action_check_updates = self.menu_about.addAction(
             t.get("check_updates", "Check for updates")
         )
-        self.action_check_updates.triggered.connect(self.check_for_updates)
+        self.action_check_updates.triggered.connect(
+            lambda: self.check_for_updates(True)
+        )
         self.btn_about.setMenu(self.menu_about)
         self.btn_about.setFixedHeight(32)
 
@@ -1090,7 +1092,7 @@ class MainWindow(QMainWindow):
             print(f"⚠️ Error comparando versiones: {e}")
             return False
 
-    def check_for_updates(self):
+    def check_for_updates(self, show_up_to_date: bool = False):
         """Checks the API for a new version and alerts the user in the saved language."""
         if not hasattr(self, "serial_number_detected"):
             t = self.translations.get(
@@ -1149,7 +1151,21 @@ class MainWindow(QMainWindow):
             return
 
         if not self.is_newer_version(latest_version):
-            print(f"✅ Current version ({APP_VERSION}) is up to date.")
+            # Solo mostrar cartel si el usuario lo pidió (botón "Buscar actualizaciones")
+            if show_up_to_date:
+                t = self.translations.get(
+                    self.current_lang, self.translations.get("en", {})
+                )
+                ud = t.get("update_dialog", {})
+
+                title = ud.get("no_serial_title", ud.get("title", "Updates"))
+                msg = ud.get(
+                    "up_to_date_msg",
+                    "You already have the latest version.\n\nCurrent version: {current}",
+                ).format(current=APP_VERSION)
+
+                QMessageBox.information(self, title, msg)
+
             return
 
         # ===============================

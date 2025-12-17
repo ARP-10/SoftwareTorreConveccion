@@ -89,7 +89,8 @@
       "body": "Hay una nueva versión del software disponible.\n\nVersión actual: {current}\nÚltima versión: {latest}\n\n",
       "release_notes": "Notas de versión:\n{changelog}\n\n",
       "mandatory_msg": "Esta actualización es obligatoria. La aplicación se cerrará para que puedas instalarla.",
-      "optional_msg": "¿Quieres abrir la página de descarga ahora?"
+      "optional_msg": "¿Quieres abrir la página de descarga ahora?",
+      "up_to_date_msg": "Ya tienes la última versión.\n\nVersión actual: {current}"
     },
     "about_button": "Acerca de",
     "check_updates": "Buscar actualizaciones"
@@ -184,7 +185,8 @@
       "body": "A new version of the software is available.\n\nCurrent version: {current}\nLatest version: {latest}\n\n",
       "release_notes": "Release notes:\n{changelog}\n\n",
       "mandatory_msg": "This update is mandatory. The application will now close so you can install it.",
-      "optional_msg": "Do you want to open the download page now?"
+      "optional_msg": "Do you want to open the download page now?",
+      "up_to_date_msg": "You already have the latest version.\n\nCurrent version: {current}"
     },
     "about_button": "About",
     "check_updates": "Check for updates"
