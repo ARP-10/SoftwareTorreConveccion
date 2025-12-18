@@ -892,7 +892,7 @@ class MainWindow(QMainWindow):
 
     def _candidate_license_paths(self, serial_number: str):
         serial_number = str(serial_number).strip()
-        fname = f"07032_{serial_number}.lic"
+        fname = f"{serial_number}.lic"
 
         paths = []
 
@@ -1140,7 +1140,9 @@ class MainWindow(QMainWindow):
         # 1) Si viene como texto tipo JSON -> parsearlo
         if isinstance(changelog_obj, str):
             s = changelog_obj.strip()
-            if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+            if (s.startswith("{") and s.endswith("}")) or (
+                s.startswith("[") and s.endswith("]")
+            ):
                 try:
                     changelog_obj = json.loads(s)
                 except Exception:
