@@ -1137,14 +1137,25 @@ class MainWindow(QMainWindow):
         changelog_obj = data.get("changelog")
         changelog = ""
 
+        # 1) Si viene como texto tipo JSON -> parsearlo
+        if isinstance(changelog_obj, str):
+            s = changelog_obj.strip()
+            if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+                try:
+                    changelog_obj = json.loads(s)
+                except Exception:
+                    # si no es JSON válido, lo dejamos como string normal
+                    pass
+
+        # 2) Si ya es dict (o se ha parseado a dict), escoger idioma
         if isinstance(changelog_obj, dict):
-            # idioma preferido -> fallback a en -> fallback al primer valor
             changelog = (
                 changelog_obj.get(self.current_lang)
                 or changelog_obj.get("en")
                 or next(iter(changelog_obj.values()), "")
             )
         else:
+            # 3) si es string normal, usarlo tal cual
             changelog = changelog_obj or ""
 
         if not latest_version:
