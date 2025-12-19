@@ -896,30 +896,32 @@ class MainWindow(QMainWindow):
 
         paths = []
 
-        # 1) misma carpeta del ejecutable (lo ideal en producción)
+        # Carpeta del ejecutable (en EXE) o del script (en dev)
         if getattr(sys, "frozen", False):
             base_dir = PPath(sys.executable).parent
         else:
             base_dir = PPath(__file__).parent
+
+        # ✅ 0) RUTA RELATIVA: .\licencias\<serial>.lic
+        paths.append(base_dir / "licencias" / fname)
+
+        # (Opcional) también probar junto al exe: .\<serial>.lic
         paths.append(base_dir / fname)
 
-        # 2) carpeta guardada previamente por el usuario (QSettings)
+        # ...el resto de rutas que ya tenías...
+        progdata = os.environ.get("PROGRAMDATA")
+        if progdata:
+            paths.append(PPath(progdata) / "HTlab" / fname)
+
         saved = self.settings.value("license/path", "")
         if saved:
             paths.append(PPath(saved))
 
-        # 3) %APPDATA%\DIKOIN\07032\
         appdata = os.environ.get("APPDATA")
         if appdata:
-            paths.append(PPath(appdata) / "DIKOIN" / "07032" / fname)
+            paths.append(PPath(appdata) / "HTlab" / fname)
 
-        # 4) %PROGRAMDATA%\DIKOIN\07032\  (para todos los usuarios)
-        progdata = os.environ.get("PROGRAMDATA")
-        if progdata:
-            paths.append(PPath(progdata) / "DIKOIN" / "07032" / fname)
-
-        # 5) C:\Users\<usuario>\07032\ (tu caso de pruebas, pero portable)
-        paths.append(PPath.home() / "07032" / fname)
+        paths.append(PPath.home() / "HTlab" / fname)
 
         # quitar duplicados
         uniq = []
@@ -927,6 +929,7 @@ class MainWindow(QMainWindow):
             if p not in uniq:
                 uniq.append(p)
         return uniq
+
 
     def verify_local_license(self, serial_number: str):
         try:
@@ -2229,8 +2232,8 @@ def load_stylesheet(app, path="style.qss"):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    QApplication.setOrganizationName("DIKOIN")
-    QApplication.setApplicationName("07032")
+    QApplication.setOrganizationName("HTlab")
+    QApplication.setApplicationName("GUI")
 
     # Estilo base “WindowsVista” (permite que QSS controle títulos y botones)
     from PyQt6.QtWidgets import QStyleFactory
