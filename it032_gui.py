@@ -930,7 +930,6 @@ class MainWindow(QMainWindow):
                 uniq.append(p)
         return uniq
 
-
     def verify_local_license(self, serial_number: str):
         try:
             serial_number = str(serial_number).strip()
@@ -998,7 +997,7 @@ class MainWindow(QMainWindow):
             mac_b64url = base64.urlsafe_b64encode(mac).decode("ascii").rstrip("=")
 
             if not hmac.compare_digest(mac_b64url, str(sig).strip()):
-                raise RuntimeError("Firma de licencia inválida (HMAC no coincide).")
+                raise RuntimeError("Firma de licencia inválida.")
 
             print(f"✅ Licencia válida: {lic_path}")
 
