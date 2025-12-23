@@ -971,8 +971,6 @@ class MainWindow(QMainWindow):
             if str(serial_in_file).strip() != serial_number:
                 raise RuntimeError(
                     "El .lic no corresponde a esta máquina.\n"
-                    f"Serial en archivo: {serial_in_file}\n"
-                    f"Serial detectado: {serial_number}"
                 )
 
             MainWindow._check_license_dates(lic_data)
