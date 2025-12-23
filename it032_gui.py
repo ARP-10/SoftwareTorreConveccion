@@ -362,6 +362,12 @@ class MainWindow(QMainWindow):
         self.reader_thread = None
         self.data_records = []
 
+        # --- LICENCIA: estado ---
+        self.license_checked = False
+        self.license_ok = False
+        self.validating = False
+        self.api_checked = False
+
         # =======================================================
         # 📊 MEDIDAS EN TIEMPO REAL
         # =======================================================
@@ -800,11 +806,7 @@ class MainWindow(QMainWindow):
         ) = ([], [], [], [], [], [])
         self.t0 = time.time()
         self.set_language(self.current_lang)
-        self.btn_iniciar.setEnabled(False)
-        self.dial_fan.setEnabled(False)
-        self.slider_heat.setEnabled(False)
-        self.btn_detener.setEnabled(False)
-        self.btn_limpiar.setEnabled(False)
+
         self.update_clear_button_state()
 
         # === TIMER PARA DETECCIÓN DE FALTA DE DATOS ===
@@ -824,6 +826,147 @@ class MainWindow(QMainWindow):
         self.timer_auto_connect = QTimer(self)
         self.timer_auto_connect.timeout.connect(self.try_auto_connect)
         self.timer_auto_connect.start(self.auto_connect_interval_ms)
+
+        # Bloquear interfaz y ocultar datos hasta validar
+        self._lock_ui_until_license()
+        self.refresh_ui()
+
+    def refresh_ui(self):
+        connected = bool(self.ser)
+        reading = bool(getattr(self, "data_monitoring_active", False))
+        licensed = bool(getattr(self, "license_ok", False))
+        has_data = len(getattr(self, "data_records", [])) > 0
+        validating = bool(getattr(self, "validating", False))
+
+        # 🔒 Mientras NO haya licencia OK (o estamos validando), NO mostrar START/STOP activos
+        if (not licensed) or validating:
+            self.btn_iniciar.setEnabled(False)
+            self.btn_detener.setEnabled(False)
+
+            self.dial_fan.setEnabled(False)
+            self.slider_heat.setEnabled(False)
+
+            self.btn_guardar.setEnabled(False)
+            self.btn_export.setEnabled(False)
+            self.btn_limpiar.setEnabled(False)
+
+            self.btn_conectar.setEnabled(not connected)  # si lo usas
+            return
+
+        # START/STOP (solo depende de conexión y lectura)
+        self.btn_iniciar.setEnabled(connected and not reading)
+        self.btn_detener.setEnabled(connected and reading)
+
+        # FAN/HEAT: solo si está leyendo + licencia OK
+        self.dial_fan.setEnabled(connected and reading and licensed)
+        self.slider_heat.setEnabled(connected and reading and licensed)
+
+        # Guardar: solo si licencia OK + conectado + leyendo
+        self.btn_guardar.setEnabled(licensed and connected and reading)
+
+        # Exportar: licencia OK + hay datos
+        self.btn_export.setEnabled(licensed and has_data)
+
+        # Limpiar: licencia OK + hay datos
+        self.btn_limpiar.setEnabled(licensed and has_data)
+
+        # Conectar (aunque lo tengas oculto): solo cuando NO está conectado
+        self.btn_conectar.setEnabled(not connected)
+
+    def _lock_ui_until_license(self):
+        """
+        Mantiene la UI con el mismo aspecto (todo visible),
+        pero NO muestra datos y NO permite controlar FAN/HEAT ni acciones de guardado/export.
+        """
+        # --- Menús visibles y usables (si quieres bloquearlos, cambia a False) ---
+        if hasattr(self, "btn_language"):
+            self.btn_language.setEnabled(True)
+        if hasattr(self, "btn_about"):
+            self.btn_about.setEnabled(True)
+
+        # --- Deshabilitar SOLO lo que quieres bloquear por licencia ---
+        for name in ("btn_guardar", "btn_export", "btn_limpiar"):
+            if hasattr(self, name):
+                getattr(self, name).setEnabled(False)
+
+        # FAN/HEAT visibles pero bloqueados
+        if hasattr(self, "dial_fan"):
+            self.dial_fan.blockSignals(True)
+            self.dial_fan.setValue(0)
+            self.dial_fan.blockSignals(False)
+            self.dial_fan.setEnabled(False)
+
+        if hasattr(self, "slider_heat"):
+            self.slider_heat.blockSignals(True)
+            self.slider_heat.setValue(0)
+            self.slider_heat.blockSignals(False)
+            self.slider_heat.setEnabled(False)
+
+        # Botones de lectura: deja iniciar/detener como tú prefieras
+        # Recomendado: permitir iniciar/detener para poder detectar serial y validar licencia.
+        # if hasattr(self, "btn_iniciar"):
+        #     self.btn_iniciar.setEnabled(True if self.ser else False)
+        # if hasattr(self, "btn_detener"):
+        #     self.btn_detener.setEnabled(False)
+
+        # --- No mostrar datos: deja etiquetas “vacías/0” sin ocultar ---
+        if hasattr(self, "translations"):
+            t = self.translations.get(
+                self.current_lang, self.translations.get("en", {})
+            )
+            lbl = t.get("labels", {})
+            if hasattr(self, "lbl_te"):
+                self.lbl_te.setText(
+                    "TE: — °C" if self.current_lang == "en" else "TE: — °C"
+                )
+            if hasattr(self, "lbl_ts"):
+                self.lbl_ts.setText(
+                    "TS: — °C" if self.current_lang == "en" else "TS: — °C"
+                )
+            if hasattr(self, "lbl_tc"):
+                self.lbl_tc.setText(
+                    "TC: — °C" if self.current_lang == "en" else "TC: — °C"
+                )
+            if hasattr(self, "lbl_vel"):
+                self.lbl_vel.setText(
+                    "Velocity: — m/s"
+                    if self.current_lang == "en"
+                    else "Velocidad: — m/s"
+                )
+            if hasattr(self, "lbl_pot"):
+                self.lbl_pot.setText(
+                    "Power: — W" if self.current_lang == "en" else "Potencia: — W"
+                )
+
+            # también los textos de % del control (visibles)
+            if hasattr(self, "lbl_fan") and "fan" in t:
+                self.lbl_fan.setText(t["fan"].format(val=0))
+            if hasattr(self, "lbl_heat") and "heater" in t:
+                self.lbl_heat.setText(t["heater"].format(val=0))
+
+        # --- Vaciar gráfica (para que no se vea nada previo) ---
+        if hasattr(self, "data_x"):
+            self.data_x.clear()
+            self.data_te.clear()
+            self.data_ts.clear()
+            self.data_tc.clear()
+            self.data_vel.clear()
+            self.data_pot.clear()
+
+        if hasattr(self, "curve_te"):
+            self.curve_te.setData([], [])
+            self.curve_ts.setData([], [])
+            self.curve_tc.setData([], [])
+            self.curve_vel.setData([], [])
+            self.curve_pot.setData([], [])
+
+        # --- Tabla: NO la ocultamos. Opcional: limpiarla visualmente al inicio ---
+        # Si quieres mantener registros previos, comenta esto.
+        if hasattr(self, "table"):
+            self.table.setRowCount(0)
+
+    def _unlock_ui_after_license(self):
+        self.refresh_ui()
 
     @staticmethod
     def _parse_iso_dt(s: str):
@@ -1128,13 +1271,9 @@ class MainWindow(QMainWindow):
             self, t["title"], t["messages"]["connected"].format(port=port)
         )
 
-        self.btn_conectar.setEnabled(False)
-        self.dial_fan.setEnabled(True)
-        self.slider_heat.setEnabled(True)
-        self.update_clear_button_state()
-
         # Arrancar lectura automáticamente
         self.iniciar_lectura()
+        self.refresh_ui()
 
     # ===========================
     # COMPROBACIÓN DE VERSIONES
@@ -1327,6 +1466,8 @@ class MainWindow(QMainWindow):
         QApplication.quit()  # 🔥 cierre aquí
 
     def check_no_data(self):
+        if getattr(self, "validating", False):
+            return
         if self.is_closing:
             return
         if self.manual_mode_active:
@@ -1434,13 +1575,21 @@ class MainWindow(QMainWindow):
         print("🟡 Esperando regreso a modo PC...")
 
     def bloquear_todo(self, estado):
-        self.btn_iniciar.setEnabled(not estado)
-        self.btn_detener.setEnabled(not estado)
-        self.btn_guardar.setEnabled(not estado)
-        self.btn_export.setEnabled(not estado)
-        self.btn_limpiar.setEnabled(not estado)
-        self.dial_fan.setEnabled(not estado)
-        self.slider_heat.setEnabled(not estado)
+        widgets = [
+            self.btn_iniciar,
+            self.btn_detener,
+            self.btn_guardar,
+            self.btn_export,
+            self.btn_limpiar,
+            self.dial_fan,
+            self.slider_heat,
+        ]
+
+        if estado:
+            for w in widgets:
+                w.setEnabled(False)
+        else:
+            self.refresh_ui()
 
     def update_clear_button_state(self):
         """Bloquea o habilita el botón Clear Table según si hay datos."""
@@ -1461,26 +1610,31 @@ class MainWindow(QMainWindow):
             )
             self.translations = {}
 
-    def verify_machine_with_api(self, serial):
+    def verify_machine_with_api(self, serial) -> bool:
         print(f"📡 Consultando API por serial {serial}...")
-
         try:
-            r = requests.get(f"{API_BASE_URL}/machines/by-serial/{serial}")
+            r = requests.get(
+                f"{API_BASE_URL}/machines/by-serial/{serial}",
+                timeout=3,  # clave
+            )
 
             if r.status_code == 200:
                 data = r.json()
                 self.machine_id = data["machine_id"]
                 print(f"✅ Máquina encontrada en API: machine_id = {self.machine_id}")
 
-                # 🔍 Comprobar actualizaciones SOLO una vez
                 if not self.update_checked:
                     self.update_checked = True
                     self.check_for_updates()
-            else:
-                print("❌ Serial no registrado en API.")
 
-        except Exception as e:
-            print(f"❌ Error consultando API: {e}")
+                return True
+
+            print("❌ Serial no registrado en API.")
+            return False
+
+        except requests.RequestException as e:
+            print(f"⚠️ No hay conexión/API no accesible: {e}")
+            return False
 
     def limpiar_tabla(self):
         if self.is_closing:
@@ -1550,8 +1704,7 @@ class MainWindow(QMainWindow):
         self.data_records = []
         self.local_results = []
         self.run_id = None
-        self.btn_limpiar.setEnabled(False)
-        self.update_clear_button_state()
+        self.refresh_ui()
         print("🧹 Tabla limpiada y RUN reiniciada")
 
     # =======================================================
@@ -1577,7 +1730,7 @@ class MainWindow(QMainWindow):
             pot = float(self.lbl_pot.text().split(":")[1].replace("W", "").strip())
 
             self.data_records.append([fecha, hora, te, ts, tc, vel, pot])
-            self.update_clear_button_state()
+            self.refresh_ui()
 
             self.table.setRowCount(len(self.data_records))
             i = len(self.data_records) - 1
@@ -1801,8 +1954,8 @@ class MainWindow(QMainWindow):
             self, t["title"], t["messages"]["connected"].format(port=port)
         )
         self.btn_conectar.setEnabled(False)
-        self.dial_fan.setEnabled(True)
-        self.slider_heat.setEnabled(True)
+        self.dial_fan.setEnabled(False)
+        self.slider_heat.setEnabled(False)
         self.update_clear_button_state()
 
     def iniciar_lectura(self):
@@ -1811,6 +1964,9 @@ class MainWindow(QMainWindow):
         if not self.ser:
             QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
             return
+
+        if not self.license_ok:
+            self._lock_ui_until_license()
 
         self.no_data_alert_shown = False
         self.last_data_time = time.time()
@@ -1824,12 +1980,7 @@ class MainWindow(QMainWindow):
 
         self._startup_grace_period = time.time()
 
-        self.btn_conectar.setEnabled(False)
-        self.btn_iniciar.setEnabled(False)
-        self.btn_detener.setEnabled(True)
-        self.dial_fan.setEnabled(True)
-        self.slider_heat.setEnabled(True)
-        self.update_clear_button_state()
+        self.refresh_ui()
 
     def start_run_on_server(self):
         if not hasattr(self, "machine_id"):
@@ -1893,11 +2044,8 @@ class MainWindow(QMainWindow):
             except:
                 print("⚠️ No se pudieron enviar los comandos de apagado.")
 
-            self.dial_fan.setEnabled(False)
-            self.slider_heat.setEnabled(False)
-            self.btn_iniciar.setEnabled(True)
-            self.btn_detener.setEnabled(False)
-            self.update_clear_button_state()
+            self.refresh_ui()
+
             # 🧹 Resetear estados después de detener
             self.manual_mode_active = False
             self.no_data_alert_shown = False
@@ -1910,6 +2058,52 @@ class MainWindow(QMainWindow):
     def actualizar_datos(self, te, ts, tc, vel, pot, serial_number):
         if self.is_closing:
             return
+
+        # ✅ LICENCIA: no mostrar nada ni permitir FAN/HEAT hasta validación
+        if not self.license_ok:
+            self.last_data_time = time.time()
+
+            if not self.license_checked and not self.validating:
+                self.validating = True
+                self.license_checked = True
+                self._lock_ui_until_license()
+
+                # (opcional) parar timer para que no moleste durante validación
+                # self.timer_no_data.stop()
+
+                dlg = LoadingDialog(
+                    self,
+                    (
+                        "Verificando licencia y conexión..."
+                        if self.current_lang == "es"
+                        else "Verifying license and connection..."
+                    ),
+                )
+                dlg.show()
+                QApplication.processEvents()
+
+                self.serial_number_detected = serial_number
+
+                # 1) LICENCIA (obligatoria)
+                self.verify_local_license(serial_number)  # si falla, cierra
+
+                # 2) API (si hay internet; si falla por red, seguimos igual)
+                self.api_ok = self.verify_machine_with_api(serial_number)
+                self.api_checked = True
+
+                # ✅ ya ha terminado todo lo que querías comprobar
+                self.license_ok = True
+
+                dlg.close()
+
+                self.validating = False
+                self._unlock_ui_after_license()
+
+                # (si paraste timer arriba)
+                self.timer_no_data.start(1000)
+
+            return
+
         # Registrar que hemos recibido datos
         self.last_data_time = time.time()
         # Si vuelven los datos, desactivamos el modo manual
@@ -1979,15 +2173,15 @@ class MainWindow(QMainWindow):
         self.manual_mode_active = False
 
         # Detectamos el número de serie SOLO una vez
-        if not hasattr(self, "serial_number_detected"):
-            self.serial_number_detected = serial_number
-            print(f"🔍 Serial detectado: {serial_number}")
+        # if not hasattr(self, "serial_number_detected"):
+        #     self.serial_number_detected = serial_number
+        #     print(f"🔍 Serial detectado: {serial_number}")
 
-            # 🔐 VERIFICAR LICENCIA LOCAL
-            self.verify_local_license(serial_number)
+        #     # 🔐 VERIFICAR LICENCIA LOCAL
+        #     self.verify_local_license(serial_number)
 
-            # 🌐 API (opcional, no bloquea)
-            self.verify_machine_with_api(serial_number)
+        #     # 🌐 API (opcional, no bloquea)
+        #     self.verify_machine_with_api(serial_number)
 
         # --- Actualización visual normal ---
         t = self.translations[self.current_lang]["labels"]
@@ -2016,6 +2210,10 @@ class MainWindow(QMainWindow):
         self.curve_pot.setData(self.data_x, self.data_pot)
 
     def actualizar_fan(self, value):
+        if not self.license_ok:
+            self.dial_fan.setValue(0)
+            return
+
         if not self.ser:
             self.dial_fan.setValue(0)
             return
@@ -2028,6 +2226,10 @@ class MainWindow(QMainWindow):
         self.timer_fan.start(120)
 
     def actualizar_heat(self, value):
+        if not self.license_ok:
+            self.slider_heat.setValue(0)
+            return
+
         if not self.ser:
             self.slider_heat.setValue(0)
             return
