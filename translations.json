@@ -93,7 +93,12 @@
       "up_to_date_msg": "Ya tienes la última versión.\n\nVersión actual: {current}"
     },
     "about_button": "Acerca de",
-    "check_updates": "Buscar actualizaciones"
+    "check_updates": "Buscar actualizaciones",
+    "license_dialog": {
+      "invalid_title": "Licencia inválida",
+      "invalid_body": "No se pudo validar la licencia:\n\n{error}",
+      "select_title": "Selecciona tu licencia (.lic)"
+    }
   },
   "en": {
     "lang_en": "English",
@@ -189,6 +194,11 @@
       "up_to_date_msg": "You already have the latest version.\n\nCurrent version: {current}"
     },
     "about_button": "About",
-    "check_updates": "Check for updates"
+    "check_updates": "Check for updates",
+    "license_dialog": {
+      "invalid_title": "Invalid license",
+      "invalid_body": "The license could not be validated:\n\n{error}",
+      "select_title": "Select your license (.lic)"
+    }
   }
 }

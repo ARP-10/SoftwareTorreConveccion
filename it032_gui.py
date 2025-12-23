@@ -882,13 +882,13 @@ class MainWindow(QMainWindow):
             (start_cmp.tzinfo is None and datetime.now() < start_cmp)
             or (start_cmp.tzinfo is not None and now_utc < start_cmp)
         ):
-            raise RuntimeError(f"Licencia aún no válida (empieza: {start_dt}).")
+            raise RuntimeError("LICENSE_NOT_YET_VALID|" + str(start_dt))
 
         if end_cmp and (
             (end_cmp.tzinfo is None and datetime.now() > end_cmp)
             or (end_cmp.tzinfo is not None and now_utc > end_cmp)
         ):
-            raise RuntimeError(f"Licencia caducada (caducó: {end_dt}).")
+            raise RuntimeError("LICENSE_EXPIRED|" + str(end_dt))
 
     def _candidate_license_paths(self, serial_number: str):
         serial_number = str(serial_number).strip()
@@ -945,12 +945,17 @@ class MainWindow(QMainWindow):
 
             # 2) si no aparece, pedir al usuario que seleccione el .lic una vez
             if lic_path is None:
+                t = self.translations.get(
+                    self.current_lang, self.translations.get("en", {})
+                )
+                lic = t.get("license_dialog", {})
                 selected, _ = QFileDialog.getOpenFileName(
                     self,
-                    "Selecciona tu licencia (.lic)",
+                    lic.get("select_title", "Select your license (.lic)"),
                     str(PPath.home()),
                     "License Files (*.lic);;All Files (*.*)",
                 )
+
                 if not selected:
                     raise RuntimeError("No se seleccionó ninguna licencia.")
                 lic_path = PPath(selected)
@@ -998,11 +1003,18 @@ class MainWindow(QMainWindow):
             print(f"✅ Licencia válida: {lic_path}")
 
         except Exception as e:
+            t = self.translations.get(
+                self.current_lang, self.translations.get("en", {})
+            )
+            lic = t.get("license_dialog", {})
             QMessageBox.critical(
                 self,
-                "Licencia inválida",
-                f"No se pudo validar la licencia:\n\n{e}",
+                lic.get("invalid_title", "Invalid license"),
+                lic.get(
+                    "invalid_body", "The license could not be validated:\n\n{error}"
+                ).format(error=e),
             )
+
             self.bloquear_todo(True)
             self.close()
 
@@ -2011,9 +2023,11 @@ class MainWindow(QMainWindow):
 
     def mostrar_resultados(self):
         if not self.data_records:
+            t = self.translations[self.current_lang]
             QMessageBox.warning(
-                self, "Sin datos", "No hay datos guardados para mostrar."
+                self, t["no_data_dialog"]["title"], t["no_data_dialog"]["message"]
             )
+
             return
         self.results_window = ResultsWindow(
             self.data_records, self.translations, self.current_lang
