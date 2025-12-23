@@ -969,9 +969,7 @@ class MainWindow(QMainWindow):
                 or lic_data.get("serial_number")
             )
             if str(serial_in_file).strip() != serial_number:
-                raise RuntimeError(
-                    "El .lic no corresponde a esta máquina.\n"
-                )
+                raise RuntimeError("El .lic no corresponde a esta máquina.\n")
 
             MainWindow._check_license_dates(lic_data)
 
@@ -1753,7 +1751,6 @@ class MainWindow(QMainWindow):
         self.dial_fan.setEnabled(True)
         self.slider_heat.setEnabled(True)
         self.update_clear_button_state()
-        QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
 
     def start_run_on_server(self):
         if not hasattr(self, "machine_id"):
