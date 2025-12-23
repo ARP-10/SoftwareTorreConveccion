@@ -96,8 +96,15 @@
     "check_updates": "Buscar actualizaciones",
     "license_dialog": {
       "invalid_title": "Licencia inválida",
-      "invalid_body": "No se pudo validar la licencia:\n\n{error}",
-      "select_title": "Selecciona tu licencia (.lic)"
+      "select_title": "Selecciona tu licencia (.lic)",
+      "not_selected": "No se seleccionó ninguna licencia.",
+      "invalid_json": "El archivo de licencia no es válido.",
+      "wrong_machine": "La licencia no corresponde a esta máquina.",
+      "missing_signature": "La licencia no contiene firma.",
+      "invalid_signature": "Firma de licencia inválida.",
+      "not_yet_valid": "La licencia aún no es válida.\nVálida desde: {date}",
+      "expired": "La licencia ha caducado.\nCaduca el: {date}",
+      "invalid_body": "No se pudo validar la licencia."
     }
   },
   "en": {
@@ -197,8 +204,15 @@
     "check_updates": "Check for updates",
     "license_dialog": {
       "invalid_title": "Invalid license",
-      "invalid_body": "The license could not be validated:\n\n{error}",
-      "select_title": "Select your license (.lic)"
+      "select_title": "Select your license (.lic)",
+      "not_selected": "No license was selected.",
+      "invalid_json": "The license file is not valid.",
+      "wrong_machine": "This license does not match this machine.",
+      "missing_signature": "The license does not contain a signature.",
+      "invalid_signature": "Invalid license signature.",
+      "not_yet_valid": "The license is not valid yet.\nValid from: {date}",
+      "expired": "The license has expired.\nExpiry date: {date}",
+      "invalid_body": "The license could not be validated"
     }
   }
 }

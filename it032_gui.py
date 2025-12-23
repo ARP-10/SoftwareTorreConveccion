@@ -957,31 +957,36 @@ class MainWindow(QMainWindow):
                 )
 
                 if not selected:
-                    raise RuntimeError("No se seleccionó ninguna licencia.")
+                    raise RuntimeError("LICENSE_NOT_SELECTED")
+
                 lic_path = PPath(selected)
                 # guardar para próximas veces
                 self.settings.setValue("license/path", str(lic_path))
 
-            # 3) leer y validar (tu lógica)
+            # 3) leer JSON
             try:
                 lic_data = json.loads(lic_path.read_text(encoding="utf-8"))
             except Exception as e:
-                raise RuntimeError(f"El .lic no es JSON válido: {e}")
+                raise RuntimeError(f"LICENSE_INVALID_JSON|{e}")
 
+            # 4) validar serial
             serial_in_file = (
                 lic_data.get("machine_serial")
                 or lic_data.get("serial")
                 or lic_data.get("serial_number")
             )
             if str(serial_in_file).strip() != serial_number:
-                raise RuntimeError("El .lic no corresponde a esta máquina.\n")
+                raise RuntimeError("LICENSE_WRONG_MACHINE")
 
+            # 5) validar fechas (ya lanza LICENSE_EXPIRED|... o LICENSE_NOT_YET_VALID|...)
             MainWindow._check_license_dates(lic_data)
 
+            # 6) validar firma presente
             sig = lic_data.get("signature") or lic_data.get("sig")
             if not sig:
-                raise RuntimeError("El .lic no contiene firma ('signature').")
+                raise RuntimeError("LICENSE_MISSING_SIGNATURE")
 
+            # 7) verificar firma
             secret_b64url = get_embedded_secret_b64url()
             pad = "=" * (-len(secret_b64url) % 4)
             secret_bytes = base64.urlsafe_b64decode(secret_b64url + pad)
@@ -998,9 +1003,71 @@ class MainWindow(QMainWindow):
             mac_b64url = base64.urlsafe_b64encode(mac).decode("ascii").rstrip("=")
 
             if not hmac.compare_digest(mac_b64url, str(sig).strip()):
-                raise RuntimeError("Firma de licencia inválida.")
+                raise RuntimeError("LICENSE_INVALID_SIGNATURE")
 
             print(f"✅ Licencia válida: {lic_path}")
+
+        except Exception as e:
+            # ===== Traducción de errores (NO hardcode en español) =====
+            t = self.translations.get(
+                self.current_lang, self.translations.get("en", {})
+            )
+            lic = t.get("license_dialog", {})
+
+            err = str(e)
+
+            # helper para extraer payload tras "|"
+            def after_pipe(s: str) -> str:
+                return s.split("|", 1)[1] if "|" in s else ""
+
+            if err.startswith("LICENSE_NOT_SELECTED"):
+                body = lic.get("not_selected", "No license was selected.")
+
+            elif err.startswith("LICENSE_INVALID_JSON"):
+                details = after_pipe(err)
+                body = lic.get(
+                    "invalid_json", "The license file is not valid JSON:\n{details}"
+                ).format(details=details)
+
+            elif err.startswith("LICENSE_WRONG_MACHINE"):
+                body = lic.get(
+                    "wrong_machine", "This license does not match this machine."
+                )
+
+            elif err.startswith("LICENSE_MISSING_SIGNATURE"):
+                body = lic.get(
+                    "missing_signature", "The license does not contain a signature."
+                )
+
+            elif err.startswith("LICENSE_INVALID_SIGNATURE"):
+                body = lic.get("invalid_signature", "Invalid license signature.")
+
+            elif err.startswith("LICENSE_NOT_YET_VALID"):
+                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
+                body = lic.get(
+                    "not_yet_valid", "License not valid yet.\nValid from: {date}"
+                ).format(date=date)
+
+            elif err.startswith("LICENSE_EXPIRED"):
+                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
+                body = lic.get(
+                    "expired", "License expired.\nExpiry date: {date}"
+                ).format(date=date)
+
+            else:
+                # fallback genérico
+                body = lic.get(
+                    "invalid_body", "The license could not be validated:\n\n{error}"
+                ).format(error=err)
+
+            QMessageBox.critical(
+                self,
+                lic.get("invalid_title", "Invalid license"),
+                body,
+            )
+
+            self.bloquear_todo(True)
+            self.close()
 
         except Exception as e:
             t = self.translations.get(
