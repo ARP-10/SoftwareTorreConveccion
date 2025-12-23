@@ -155,7 +155,8 @@ QPushButton:pressed {
    BOTÓN DE IDIOMA
    ============================================================ */
 
-QToolButton#btn_language {
+QToolButton#btn_language,
+QToolButton#btn_about {
     border-radius: 14px;
     padding: 6px 14px;
     font-weight: 600;
@@ -166,13 +167,15 @@ QToolButton#btn_language {
     padding: 4px 12px;    
 }
 
-QToolButton#btn_language:hover {
+QToolButton#btn_language:hover,
+QToolButton#btn_about:hover {
     background-color: rgba(0, 119, 182, 0.10);  
     border-color: #0096c7;                     
     color: #0096c7;    
 }
 
-QToolButton#btn_language:pressed {
+QToolButton#btn_language:pressed,
+QToolButton#btn_about:pressed {
     background-color: rgba(0, 119, 182, 0.10);
     border: 2px solid #005f87;
     color: #005f87;
