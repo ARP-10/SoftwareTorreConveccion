@@ -1881,11 +1881,18 @@ class MainWindow(QMainWindow):
         self.group_tabla.setTitle(t["results"])
 
         # --- Etiquetas de medición ---
-        self.lbl_te.setText(t["labels"]["te"].format(val=0))
-        self.lbl_ts.setText(t["labels"]["ts"].format(val=0))
-        self.lbl_tc.setText(t["labels"]["tc"].format(val=0))
-        self.lbl_vel.setText(t["labels"]["vel"].format(val=0))
-        self.lbl_pot.setText(t["labels"]["pot"].format(val=0))
+
+        te = getattr(self, "last_te", 0)
+        ts = getattr(self, "last_ts", 0)
+        tc = getattr(self, "last_tc", 0)
+        vel = getattr(self, "last_vel", 0)
+        pot = getattr(self, "last_pot", 0)
+
+        self.lbl_te.setText(t["labels"]["te"].format(val=te))
+        self.lbl_ts.setText(t["labels"]["ts"].format(val=ts))
+        self.lbl_tc.setText(t["labels"]["tc"].format(val=tc))
+        self.lbl_vel.setText(t["labels"]["vel"].format(val=vel))
+        self.lbl_pot.setText(t["labels"]["pot"].format(val=pot))
 
         # --- Botones ---
         self.btn_iniciar.setText(t["start"])
@@ -2182,6 +2189,12 @@ class MainWindow(QMainWindow):
 
         #     # 🌐 API (opcional, no bloquea)
         #     self.verify_machine_with_api(serial_number)
+
+        self.last_te = te
+        self.last_ts = ts
+        self.last_tc = tc
+        self.last_vel = vel
+        self.last_pot = pot
 
         # --- Actualización visual normal ---
         t = self.translations[self.current_lang]["labels"]
