@@ -1293,12 +1293,52 @@ class MainWindow(QMainWindow):
                 self.current_lang, self.translations.get("en", {})
             )
             lic = t.get("license_dialog", {})
+
+            err = str(e)
+
+            def after_pipe(s: str) -> str:
+                return s.split("|", 1)[1] if "|" in s else ""
+
+            # Mapa: código de error -> key de translations.json
+            error_key_map = {
+                "LICENSE_NOT_SELECTED": "not_selected",
+                "LICENSE_INVALID_JSON": "invalid_json",
+                "LICENSE_WRONG_MACHINE": "wrong_machine",
+                "LICENSE_MISSING_SIGNATURE": "missing_signature",
+                "LICENSE_INVALID_SIGNATURE": "invalid_signature",
+                "LICENSE_NOT_YET_VALID": "not_yet_valid",
+                "LICENSE_EXPIRED": "expired",
+            }
+
+            # Detectar qué código es
+            code = next(
+                (k for k in error_key_map.keys() if err.startswith(k)), "UNKNOWN"
+            )
+
+            # Construir body según el caso
+            if code == "LICENSE_INVALID_JSON":
+                details = after_pipe(err)
+                body = lic["invalid_json"].format(details=details)
+
+            elif code == "LICENSE_NOT_YET_VALID":
+                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
+                body = lic["not_yet_valid"].format(date=date)
+
+            elif code == "LICENSE_EXPIRED":
+                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
+                body = lic["expired"].format(date=date)
+
+            elif code == "UNKNOWN":
+                body = lic["invalid_body"].format(error=err)
+
+            else:
+                # resto: mensajes sin parámetros
+                body = lic[error_key_map[code]]
+
             QMessageBox.critical(
                 self,
-                lic.get("invalid_title", "Invalid license"),
-                lic.get(
-                    "invalid_body", "The license could not be validated:\n\n{error}"
-                ).format(error=e),
+                lic["invalid_title"],
+                body,
             )
 
             self.bloquear_todo(True)
