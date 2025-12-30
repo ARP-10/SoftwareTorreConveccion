@@ -120,6 +120,26 @@ class ClearTableWorker(QThread):
         except Exception as e:
             self.finished.emit(False, str(e))
 
+class ApiVerifyWorker(QThread):
+    finished = pyqtSignal(bool, dict, str)  # ok, data, err
+
+    def __init__(self, serial: str):
+        super().__init__()
+        self.serial = str(serial).strip()
+
+    def run(self):
+        try:
+            r = requests.get(
+                f"{API_BASE_URL}/machines/by-serial/{self.serial}",
+                timeout=6,
+            )
+            if r.status_code == 200:
+                self.finished.emit(True, r.json(), "")
+            else:
+                self.finished.emit(False, {}, f"{r.status_code}: {r.text}")
+        except Exception as e:
+            self.finished.emit(False, {}, str(e))
+
 
 class CloseWorker(QThread):
     finished = pyqtSignal(bool, str)
@@ -781,6 +801,23 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
+        
+        # ==========================
+        # STARTUP LOADING (spinner)
+        # ==========================
+        self.startup_phase = True
+        self.startup_serial_ok = False
+        self.startup_license_ok = False
+        self.startup_api_ok = False
+
+        self.startup_loading = LoadingDialog(
+            self,
+            ("Iniciando... Buscando equipo" if self.current_lang == "es"
+             else "Starting... Looking for device")
+        )
+        self.startup_loading.show()
+        QApplication.processEvents()
+
 
         # =======================================================
         # EVENTOS
@@ -1023,19 +1060,14 @@ class MainWindow(QMainWindow):
 
         if not port:
             # Mostrar aviso SOLO una vez (opcional)
-            if not self.auto_connect_alert_shown:
-                self.auto_connect_alert_shown = True
-                # Mejor "information" (no warning) para no asustar
-                QMessageBox.information(
-                    self,
-                    t["title"],
-                    (
-                        "Verifica que el equipo esté conectado por USB."
-                        if self.current_lang == "es"
-                        else "Please verify the device is connected via USB."
-                    ),
+            if getattr(self, "startup_loading", None) and self.startup_loading.isVisible():
+                self.startup_loading.setWindowTitle(
+                    "Buscando equipo por USB..." if self.current_lang == "es"
+                    else "Searching USB device..."
                 )
+                QApplication.processEvents()
             return
+
 
         # Si encontramos puerto, conectamos
         try:
@@ -1047,14 +1079,23 @@ class MainWindow(QMainWindow):
         # Ya conectado: parar el timer o dejarlo (yo prefiero pararlo)
         self.timer_auto_connect.stop()
 
-        QMessageBox.information(
-            self, t["title"], t["messages"]["connected"].format(port=port)
-        )
+        if not self.startup_phase:
+            QMessageBox.information(
+                self, t["title"], t["messages"]["connected"].format(port=port)
+            )
 
         self.btn_conectar.setEnabled(False)
         self.dial_fan.setEnabled(True)
         self.slider_heat.setEnabled(True)
         self.update_clear_button_state()
+        
+        if getattr(self, "startup_loading", None) and self.startup_loading.isVisible():
+            self.startup_loading.setWindowTitle(
+                "Conectando y esperando datos..." if self.current_lang == "es"
+                else "Connecting and waiting for data..."
+            )
+            QApplication.processEvents()
+
 
         # Arrancar lectura automáticamente
         self.iniciar_lectura()
@@ -1731,9 +1772,10 @@ class MainWindow(QMainWindow):
     def iniciar_lectura(self):
         t = self.translations[self.current_lang]
 
-        if not self.ser:
-            QMessageBox.warning(self, t["title"], t["messages"]["must_connect_first"])
-            return
+        # Durante startup, no sacar popup
+        if not self.startup_phase:
+            QMessageBox.information(self, t["title"], t["messages"]["reading_started"])
+
 
         self.no_data_alert_shown = False
         self.last_data_time = time.time()
@@ -1907,11 +1949,29 @@ class MainWindow(QMainWindow):
             self.serial_number_detected = serial_number
             print(f"🔍 Serial detectado: {serial_number}")
 
-            # 🔐 VERIFICAR LICENCIA LOCAL
-            self.verify_local_license(serial_number)
+            # 1) Licencia (bloqueante por QFileDialog / QMessageBox) -> OK si no cierra app
+            if getattr(self, "startup_loading", None) and self.startup_loading.isVisible():
+                self.startup_loading.setWindowTitle(
+                    "Validando licencia..." if self.current_lang == "es"
+                    else "Validating license..."
+                )
+                QApplication.processEvents()
 
-            # 🌐 API (opcional, no bloquea)
-            self.verify_machine_with_api(serial_number)
+            self.verify_local_license(serial_number)
+            self.startup_license_ok = True
+
+            # 2) API en segundo plano (no bloquea UI)
+            if getattr(self, "startup_loading", None) and self.startup_loading.isVisible():
+                self.startup_loading.setWindowTitle(
+                    "Conectando a la API..." if self.current_lang == "es"
+                    else "Connecting to API..."
+                )
+                QApplication.processEvents()
+
+            self.api_worker = ApiVerifyWorker(serial_number)
+            self.api_worker.finished.connect(self._on_api_verified)
+            self.api_worker.start()
+
 
         # --- Actualización visual normal ---
         t = self.translations[self.current_lang]["labels"]
@@ -1938,6 +1998,49 @@ class MainWindow(QMainWindow):
         self.curve_tc.setData(self.data_x, self.data_tc)
         self.curve_vel.setData(self.data_x, self.data_vel)
         self.curve_pot.setData(self.data_x, self.data_pot)
+    
+    def _on_api_verified(self, ok: bool, data: dict, err: str):
+        if ok:
+            try:
+                self.machine_id = data["machine_id"]
+                print(f"✅ Máquina encontrada en API: machine_id = {self.machine_id}")
+                self.startup_api_ok = True
+
+                # Comprobar updates una vez (si quieres mantenerlo)
+                if not self.update_checked:
+                    self.update_checked = True
+                    self.check_for_updates()
+
+            except Exception as e:
+                print(f"⚠️ Respuesta API inesperada: {e}")
+        else:
+            print(f"❌ No se pudo verificar en API: {err}")
+            # Decide si esto debe bloquear o no. Yo lo dejaría NO-bloqueante:
+            self.startup_api_ok = False
+
+        self._maybe_finish_startup()
+
+    def _maybe_finish_startup(self):
+        # Condición mínima: ya llegan datos + licencia OK.
+        # La API si falla, normalmente NO debería impedir usar el equipo.
+        if not self.startup_license_ok:
+            return
+
+        # Si quieres exigir API OK también, cambia a:
+        # if not (self.startup_license_ok and self.startup_api_ok): return
+
+        self.startup_phase = False
+
+        if getattr(self, "startup_loading", None) and self.startup_loading.isVisible():
+            self.startup_loading.close()
+
+        # aquí ya puedes habilitar lo que quieras “definitivo”
+        self.btn_iniciar.setEnabled(False)   # porque ya estás leyendo
+        self.btn_detener.setEnabled(True)
+        self.btn_guardar.setEnabled(True)
+        self.btn_export.setEnabled(True)
+        self.update_clear_button_state()
+
 
     def actualizar_fan(self, value):
         if not self.ser:
