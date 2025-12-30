@@ -875,7 +875,6 @@ class MainWindow(QMainWindow):
 
         self.timer_auto_connect = QTimer(self)
         self.timer_auto_connect.timeout.connect(self.try_auto_connect)
-        self.timer_auto_connect.start(self.auto_connect_interval_ms)
 
         # Bloquear interfaz y ocultar datos hasta validar
         self._lock_ui_until_license()
@@ -1123,6 +1122,41 @@ class MainWindow(QMainWindow):
                 uniq.append(p)
         return uniq
 
+    def ask_for_license_file(self) -> str | None:
+        """
+        Muestra un cartel informativo antes de abrir el explorador.
+        Devuelve la ruta seleccionada o None si el usuario cancela.
+        """
+        t = self.translations.get(self.current_lang, self.translations.get("en", {}))
+        dlg = t.get("license_dialog", {})
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setWindowTitle(dlg.get("not_found_title", "License not found"))
+        box.setText(
+            dlg.get("not_found_message", "License file not found. Please locate it.")
+        )
+
+        btn_browse = box.addButton(
+            dlg.get("browse_button", "Browse"), QMessageBox.ButtonRole.AcceptRole
+        )
+        btn_cancel = box.addButton(
+            dlg.get("cancel_button", "Cancel"), QMessageBox.ButtonRole.RejectRole
+        )
+
+        box.exec()
+
+        if box.clickedButton() != btn_browse:
+            return None
+
+        selected, _ = QFileDialog.getOpenFileName(
+            self,
+            dlg.get("select_title", "Select your license (.lic)"),
+            str(PPath.home()),
+            dlg.get("file_filter", "License Files (*.lic);;All Files (*.*)"),
+        )
+        return selected or None
+
     def verify_local_license(self, serial_number: str):
         try:
             serial_number = str(serial_number).strip()
@@ -1138,18 +1172,10 @@ class MainWindow(QMainWindow):
 
             # 2) si no aparece, pedir al usuario que seleccione el .lic una vez
             if lic_path is None:
-                t = self.translations.get(
-                    self.current_lang, self.translations.get("en", {})
-                )
-                lic = t.get("license_dialog", {})
-                selected, _ = QFileDialog.getOpenFileName(
-                    self,
-                    lic.get("select_title", "Select your license (.lic)"),
-                    str(PPath.home()),
-                    "License Files (*.lic);;All Files (*.*)",
-                )
+                selected = self.ask_for_license_file()
 
                 if not selected:
+                    # usuario canceló -> cerrar programa
                     raise RuntimeError("LICENSE_NOT_SELECTED")
 
                 lic_path = PPath(selected)
