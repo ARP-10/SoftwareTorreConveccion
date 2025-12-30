@@ -71,7 +71,6 @@ class LoadingDialog(QDialog):
     def __init__(self, parent, text="Procesando..."):
         super().__init__(parent)
 
-        self.setWindowTitle(text)
         self.setModal(True)
         self.setWindowFlags(
             Qt.WindowType.Dialog
@@ -79,23 +78,74 @@ class LoadingDialog(QDialog):
             | Qt.WindowType.CustomizeWindowHint
         )
 
+        if (
+            parent
+            and hasattr(parent, "translations")
+            and hasattr(parent, "current_lang")
+        ):
+            t = parent.translations[parent.current_lang]
+            self.setWindowTitle(t["title"])
+        else:
+            self.setWindowTitle("Cargando...")
+
         self.setWindowIcon(QIcon("fotos/dikoin_logo.jpg"))
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # Spinner animado (GIF)
+        # ✅ Texto dinámico
+        self.lbl_text = QLabel(text)
+        self.lbl_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_text.setStyleSheet("font-size: 14px; font-weight: 500;")
+        layout.addWidget(self.lbl_text)
+
+        # Spinner animado
         self.movie_label = QLabel()
         self.movie_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.movie = QMovie("icons/spinner.gif")  # añade tu spinner.gif en /icons
+        self.movie = QMovie("icons/spinner.gif")
         self.movie.setScaledSize(QSize(64, 64))
         self.movie_label.setMovie(self.movie)
         self.movie.start()
 
         layout.addWidget(self.movie_label)
 
-        self.setFixedSize(260, 160)
+        self.setFixedSize(280, 180)
+
+    def setText(self, text):
+        """Permite cambiar el texto sin crear otro diálogo."""
+        self.lbl_text.setText(text)
+
+
+class StartupWorker(QThread):
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, main_window):
+        super().__init__()
+        self.main_window = main_window
+
+    def run(self):
+        try:
+            # ⚠️ Aquí ponemos lo que quieras “arrancar” automáticamente
+
+            # 1) Intentar autoconectar (sin bloquear UI)
+            port = core.detectar_puerto()
+            if not port:
+                self.finished.emit(False, "No se detectó puerto")
+                return
+
+            self.main_window.ser = core.serial.Serial(
+                port, core.BAUD, timeout=core.COM_TIMEOUT
+            )
+
+            # 2) Iniciar lectura (esto lanza ReaderThread)
+            self.main_window.iniciar_lectura()
+
+            # ✅ Si todo salió bien
+            self.finished.emit(True, "OK")
+
+        except Exception as e:
+            self.finished.emit(False, str(e))
 
 
 class ClearTableWorker(QThread):
@@ -1246,15 +1296,14 @@ class MainWindow(QMainWindow):
             if not self.auto_connect_alert_shown:
                 self.auto_connect_alert_shown = True
                 # Mejor "information" (no warning) para no asustar
-                QMessageBox.information(
-                    self,
-                    t["title"],
-                    (
-                        "Verifica que el equipo esté conectado por USB."
+                dlg = getattr(self, "startup_loading", None)
+                if dlg and dlg.isVisible():
+                    dlg.setText(
+                        "Conecta el equipo por USB..."
                         if self.current_lang == "es"
-                        else "Please verify the device is connected via USB."
-                    ),
-                )
+                        else "Please connect the device via USB..."
+                    )
+
             return
 
         # Si encontramos puerto, conectamos
@@ -2078,16 +2127,14 @@ class MainWindow(QMainWindow):
                 # (opcional) parar timer para que no moleste durante validación
                 # self.timer_no_data.stop()
 
-                dlg = LoadingDialog(
-                    self,
-                    (
+                dlg = getattr(self, "startup_loading", None)
+                if dlg and dlg.isVisible():
+                    dlg.setText(
                         "Verificando licencia y conexión..."
                         if self.current_lang == "es"
                         else "Verifying license and connection..."
-                    ),
-                )
-                dlg.show()
-                QApplication.processEvents()
+                    )
+                    QApplication.processEvents()
 
                 self.serial_number_detected = serial_number
 
@@ -2101,7 +2148,9 @@ class MainWindow(QMainWindow):
                 # ✅ ya ha terminado todo lo que querías comprobar
                 self.license_ok = True
 
-                dlg.close()
+                if dlg and dlg.isVisible():
+                    dlg.close()
+                    del self.startup_loading
 
                 self.validating = False
                 self._unlock_ui_after_license()
@@ -2523,7 +2572,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     QApplication.setOrganizationName("HTlab")
-    QApplication.setApplicationName("GUI")
+    # QApplication.setApplicationName("GUI")
 
     # Estilo base “WindowsVista” (permite que QSS controle títulos y botones)
     from PyQt6.QtWidgets import QStyleFactory
@@ -2544,6 +2593,29 @@ if __name__ == "__main__":
     with open("style.qss", "r", encoding="utf-8") as f:
         app.setStyleSheet(f.read())
 
-    window = MainWindow()
+window = MainWindow()
+
+window.show()
+loading = LoadingDialog(window, "Cargando programa…")
+loading.show()
+
+
+def on_startup_finished(ok, msg):
+    if not ok:
+        loading.close()
+        QMessageBox.warning(window, "Error", msg)
+        window.close()
+        return
+
+    # ✅ Mostrar ventana pero el spinner sigue encima
     window.show()
-    sys.exit(app.exec())
+
+    # ✅ Guardar referencia del loading en la ventana
+    window.startup_loading = loading
+
+
+worker = StartupWorker(window)
+worker.finished.connect(on_startup_finished)
+worker.start()
+
+sys.exit(app.exec())
