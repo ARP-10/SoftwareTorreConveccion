@@ -520,11 +520,13 @@ class MainWindow(QMainWindow):
         legend_labels = t["legend_labels"]
 
         self.curve_te = self.plot_widget.plot(
-            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[0]
+            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[0]
         )
+
         self.curve_ts = self.plot_widget.plot(
-            pen=pg.mkPen("#3498DB", width=2), name=legend_labels[1]
+            pen=pg.mkPen("#E74C3C", width=2), name=legend_labels[1]
         )
+
         self.curve_tc = self.plot_widget.plot(
             pen=pg.mkPen("#27AE60", width=2), name=legend_labels[2]
         )
@@ -575,7 +577,7 @@ class MainWindow(QMainWindow):
         v_legend.setContentsMargins(0, 0, 0, 0)
 
         for color, style, chk in zip(
-            ["#E74C3C", "#3498DB", "#27AE60", "#F39C12", "#8E44AD"],
+            ["#3498DB", "#E74C3C", "#27AE60", "#F39C12", "#8E44AD"],  # TE azul, TS rojo
             ["solid", "solid", "solid", "dot", "dash"],
             [self.chk_te, self.chk_ts, self.chk_tc, self.chk_vel, self.chk_pot],
         ):
@@ -2445,14 +2447,10 @@ class MainWindow(QMainWindow):
     # CIERRE DE PROGRAMA (al pulsar la X)
     # =======================================================
     def closeEvent(self, event):
+        # Si ya estamos cerrando "de verdad", dejar pasar
         if self.is_closing:
             event.accept()
             return
-
-        self.is_closing = True
-
-        self.timer_no_data.stop()
-        self.data_monitoring_active = False
 
         t = self.translations[self.current_lang]["dialogs_close"]
 
@@ -2470,6 +2468,10 @@ class MainWindow(QMainWindow):
             msg.exec()
 
             if msg.clickedButton() == btn_no:
+                # NO se cierra: aseguramos que todo sigue vivo
+                self.is_closing = False
+                if self.ser and self.data_monitoring_active:
+                    self.timer_no_data.start(1000)
                 event.ignore()
                 return
 
@@ -2478,12 +2480,23 @@ class MainWindow(QMainWindow):
         # ===============================================
         if self.dial_fan.value() != 0 or self.slider_heat.value() != 0:
             QMessageBox.warning(self, t["safety_title"], t["safety_message"])
+
+            # NO se cierra: restaurar estado
+            self.is_closing = False
+            if self.ser and self.data_monitoring_active:
+                self.timer_no_data.start(1000)
+
             event.ignore()
             return
 
         # ===============================================
-        # 3) Cerrar correctamente hilo y puerto
+        # A PARTIR DE AQUÍ SÍ SE VA A CERRAR
         # ===============================================
+        self.is_closing = True
+        self.timer_no_data.stop()
+        self.data_monitoring_active = False
+
+        # 3) Cerrar correctamente hilo y puerto
         if self.reader_thread:
             self.reader_thread.stop()
             self.reader_thread.wait()
@@ -2496,21 +2509,16 @@ class MainWindow(QMainWindow):
                 print("[TX] HEAT000 (shutdown)")
             except:
                 pass
-
             self.ser.close()
 
-        # ===============================================
         # 4) Si no hay datos → cerrar normal
-        # ===============================================
         if not getattr(self, "run_id", None) or not getattr(self, "local_results", []):
             print("No hay datos para enviar. Cerrando.")
             event.accept()
             return
 
-        # ===============================================
-        # 5) Mostrar GIF y lanzar hilo
-        # ===============================================
-        event.ignore()  # ⛔ EVITA que Qt cierre la app
+        # 5) Mostrar GIF y lanzar hilo (cerrado asíncrono)
+        event.ignore()
 
         self.loading_close = LoadingDialog(
             self,
@@ -2523,7 +2531,6 @@ class MainWindow(QMainWindow):
         self.loading_close.show()
         QApplication.processEvents()
 
-        # Hilo para el envío a la API
         self.close_worker = CloseWorker(self.run_id, self.local_results)
         self.close_worker.finished.connect(self._finish_close)
         self.close_worker.start()
