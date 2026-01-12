@@ -104,7 +104,12 @@
       "not_yet_valid": "Licencia aún no válida.\nVálida desde: {date}",
       "expired": "Licencia caducada.\nCaducó: {date}",
       "invalid_title": "Licencia inválida",
-      "invalid_body": "No se pudo validar la licencia:\n\n{error}"
+      "invalid_body": "No se pudo validar la licencia:\n\n{error}",
+      "not_found_title": "Licencia no encontrada",
+      "not_found_message": "No se encontró el archivo de licencia. Por favor selecciónalo.",
+      "browse_button": "Buscar...",
+      "cancel_button": "Cancelar",
+      "file_filter": "Archivos de licencia (*.lic);;Todos los archivos (*.*)"
     }
   },
   "en": {
@@ -212,7 +217,12 @@
       "not_yet_valid": "License not valid yet.\nValid from: {date}",
       "expired": "License expired.\nExpiry date: {date}",
       "invalid_title": "Invalid license",
-      "invalid_body": "The license could not be validated:\n\n{error}"
+      "invalid_body": "The license could not be validated:\n\n{error}",
+      "not_found_title": "License not found",
+      "not_found_message": "License file not found. Please locate it.",
+      "browse_button": "Browse",
+      "cancel_button": "Cancel",
+      "file_filter": "License Files (*.lic);;All Files (*.*)"
     }
   }
 }
