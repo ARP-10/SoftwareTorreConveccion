@@ -3,7 +3,7 @@
     "language_button": "Idioma",
     "lang_en": "Inglés",
     "lang_es": "Español",
-    "title": "IT 03.2 - Convección Natural y Forzada (DIKOIN)",
+    "title": "Transmisión de calor por convección natural y forzada",
     "measurements": "Medidas en tiempo real",
     "control": "Control",
     "graph": "Gráfica en tiempo real",
@@ -55,7 +55,6 @@
       "export_format_csv": "CSV (.csv)",
       "export_success": "Archivo exportado correctamente.",
       "export_cancel": "Cancelar"
-
     },
     "dialogs_close": {
       "yes": "Si",
@@ -74,24 +73,50 @@
       "no": "Cancelar"
     },
     "manual_mode_dialog": {
-    "title": "Control manual",
-    "message": "⚠️ El equipo ha pasado a CONTROL MANUAL.\n\nSi desea controlar el equipo manualmente desde el panel físico,\npuede cerrar el software.\n\nSi vuelve a seleccionar el MODO PC en el equipo,\nel software seguirá funcionando normalmente.",
-    "close_button": "Cerrar programa"
-  },
-  "no_data_dialog": {
-  "title": "Sin datos",
-  "message": "⚠️ No se reciben datos del equipo desde hace más de 5 segundos.\nEs posible que el cable USB esté desconectado.\nVerifique la conexión.",
-  "close_button": "Cerrar programa"
-}
-
-
-
+      "title": "Control manual",
+      "message": "⚠️ El equipo ha pasado a CONTROL MANUAL.\n\nSi desea controlar el equipo manualmente desde el panel físico,\npuede cerrar el software.\n\nSi vuelve a seleccionar el MODO PC en el equipo,\nel software seguirá funcionando normalmente.",
+      "close_button": "Cerrar programa"
+    },
+    "no_data_dialog": {
+      "title": "Sin datos",
+      "message": "⚠️ No se reciben datos del equipo desde hace más de 5 segundos.\nEs posible que el cable USB esté desconectado.\nVerifique la conexión.",
+      "close_button": "Cerrar programa"
+    },
+    "update_dialog": {
+      "title": "Actualización disponible",
+      "no_serial_title": "Actualizaciones",
+      "no_serial_msg": "No se detecta comunicación con el equipo.\n\nVerifica que el equipo esté correctamente conectado por USB.",
+      "body": "Hay una nueva versión del software disponible.\n\nVersión actual: {current}\nÚltima versión: {latest}\n\n",
+      "release_notes": "Notas de versión:\n{changelog}\n\n",
+      "mandatory_msg": "Esta actualización es obligatoria. La aplicación se cerrará para que puedas instalarla.",
+      "optional_msg": "¿Quieres abrir la página de descarga ahora?",
+      "up_to_date_msg": "Ya tienes la última versión.\n\nVersión actual: {current}"
+    },
+    "about_button": "Acerca de",
+    "check_updates": "Buscar actualizaciones",
+    "license_dialog": {
+      "select_title": "Selecciona tu licencia (.lic)",
+      "not_selected": "No se seleccionó ninguna licencia.",
+      "invalid_json": "El archivo de licencia no es un JSON válido:\n{details}",
+      "wrong_machine": "No se encuentra licencia para esta máquina.",
+      "missing_signature": "La licencia no contiene firma.",
+      "invalid_signature": "Firma de licencia inválida.",
+      "not_yet_valid": "Licencia aún no válida.\nVálida desde: {date}",
+      "expired": "Licencia caducada.\nCaducó: {date}",
+      "invalid_title": "Licencia inválida",
+      "invalid_body": "No se pudo validar la licencia:\n\n{error}",
+      "not_found_title": "Licencia no encontrada",
+      "not_found_message": "No se encontró el archivo de licencia. Por favor selecciónalo.",
+      "browse_button": "Buscar...",
+      "cancel_button": "Cancelar",
+      "file_filter": "Archivos de licencia (*.lic);;Todos los archivos (*.*)"
+    }
   },
   "en": {
     "lang_en": "English",
     "lang_es": "Spanish",
     "language_button": "Language",
-    "title": "IT 03.2 - Natural and Forced Convection (DIKOIN)",
+    "title": "Natural and Forced Convection Heat Transfer",
     "measurements": "Real-time measurements",
     "control": "Control",
     "graph": "Real-Time Graph",
@@ -143,7 +168,6 @@
       "export_format_csv": "CSV (.csv)",
       "export_success": "File exported successfully.",
       "export_cancel": "Cancel"
-
     },
     "dialogs_close": {
       "yes": "Yes",
@@ -162,17 +186,43 @@
       "no": "Cancel"
     },
     "manual_mode_dialog": {
-    "title": "Manual control",
-    "message": "⚠️ The device has switched to MANUAL CONTROL.\n\nIf you want to operate the device manually using the physical panel,\nyou can close the software.\n\nIf you switch back to PC MODE on the device,\nthe software will continue working normally.",
-    "close_button": "Close program"
+      "title": "Manual control",
+      "message": "⚠️ The device has switched to MANUAL CONTROL.\n\nIf you want to operate the device manually using the physical panel,\nyou can close the software.\n\nIf you switch back to PC MODE on the device,\nthe software will continue working normally.",
+      "close_button": "Close program"
     },
     "no_data_dialog": {
-  "title": "No data",
-  "message": "⚠️ No data has been received for more than 5 seconds.\nThe USB cable may be disconnected.\nCheck the connection.",
-  "close_button": "Close program"
-}
-
-
-
+      "title": "No data",
+      "message": "⚠️ No data has been received for more than 5 seconds.\nThe USB cable may be disconnected.\nCheck the connection.",
+      "close_button": "Close program"
+    },
+    "update_dialog": {
+      "title": "Update available",
+      "no_serial_title": "Updates",
+      "no_serial_msg": "No communication with the device was detected.\n\nPlease verify that the device is properly connected via USB.",
+      "body": "A new version of the software is available.\n\nCurrent version: {current}\nLatest version: {latest}\n\n",
+      "release_notes": "Release notes:\n{changelog}\n\n",
+      "mandatory_msg": "This update is mandatory. The application will now close so you can install it.",
+      "optional_msg": "Do you want to open the download page now?",
+      "up_to_date_msg": "You already have the latest version.\n\nCurrent version: {current}"
+    },
+    "about_button": "About",
+    "check_updates": "Check for updates",
+    "license_dialog": {
+      "select_title": "Select your license (.lic)",
+      "not_selected": "No license was selected.",
+      "invalid_json": "The license file is not valid JSON:\n{details}",
+      "wrong_machine": "No license found for this machine.",
+      "missing_signature": "The license does not contain a signature.",
+      "invalid_signature": "Invalid license signature.",
+      "not_yet_valid": "License not valid yet.\nValid from: {date}",
+      "expired": "License expired.\nExpiry date: {date}",
+      "invalid_title": "Invalid license",
+      "invalid_body": "The license could not be validated:\n\n{error}",
+      "not_found_title": "License not found",
+      "not_found_message": "License file not found. Please locate it.",
+      "browse_button": "Browse",
+      "cancel_button": "Cancel",
+      "file_filter": "License Files (*.lic);;All Files (*.*)"
+    }
   }
 }
