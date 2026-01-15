@@ -9,40 +9,55 @@ Este programa permite comunicar, controlar y visualizar en tiempo real los pará
 
 ## 📦 Características principales
 
-- ✅ Comunicación directa con el microcontrolador (Arduino Mega 2560) mediante puerto serie.
-- ✅ Lectura y registro de 5 variables en tiempo real:
-  - Temperatura de entrada (TE)
-  - Temperatura de salida (TS)
-  - Termopar (TC)
-  - Velocidad del aire (m/s)
-  - Potencia eléctrica (W)
-- ✅ Control remoto del ventilador (FAN) y el calefactor (HEAT) desde la interfaz.
+- ✅ Comunicación automática con el microcontrolador (Arduino Mega 2560) mediante puerto serie USB.
+- ✅ Detección automática del puerto COM.
+- ✅ Lectura en tiempo real de 5 variables físicas:
+     - Temperatura de entrada (TE)
+     - Temperatura de salida (TS)
+     - Termopar (TC)
+     - Velocidad del aire (m/s)
+     - Potencia eléctrica (W)
+- ✅ Control remoto del sistema:
+    - Ventilador (FAN)
+    - Calefactor (HEAT)
 - ✅ Gráfica en tiempo real con PyQtGraph.
-- ✅ Interfaz moderna e intuitiva desarrollada con PyQt6.
-- ✅ Compatible con Windows 10 y Windows 11 (32/64 bits).
-- ✅ Preparado para futura integración con servidor remoto (actualizaciones / prácticas online).
-
+- ✅ Registro manual de datos y exportación a Excel (.xlsx) o CSV.
+- ✅ Gestión de idioma (ES / EN).
+- ✅ Sistema de validación de licencia integrado.
+- ✅ Verificación opcional de equipo y versión mediante API remota.
+- ✅ Interfaz gráfica moderna desarrollada con PyQt6.
+- ✅ Compatible con Windows 10 y Windows 11 (64 bits).
+- ✅ Funciona tanto como script Python como ejecutable (.exe).
 
 ---
 
-## 🧰 Requisitos de instalación
+## 🔐 Sistema de licencias
 
-Asegúrate de tener Python 3.10 o superior instalado.
-Luego instala las dependencias necesarias ejecutando en consola:
+El software incorpora un sistema de validación de licencia local, basado en:
 
-python -m pip install -r requirements.txt
+- Número de serie detectado desde el equipo.
+- Arhivo de licencia (<serial>.lic).
+- Firma y validación criptográfica interna.
 
+Comportamiento:
 
-Si no tienes el archivo requirements.txt, puedes instalar manualmente:
+- Si no se encuentra una licencia válida, el usuario deberá seleccionar manualmente el archivo de licencia.
+- La ruta seleccionada se guarda automáticamente para futuras ejecuciones.
 
-python -m pip install pyserial PyQt6 pyqtgraph
+- Sin licencia válida:
+
+  - El software no permite iniciar mediciones ni controlar el equipo.
+  - Se muestra un mensaje de error y el programa se cierra de forma segura.
+
 
 ---
 
 ## 🗂️ Estructura del proyecto
     it032_gui.py        # Interfaz gráfica (PyQt6 + PyQtGraph)
-    it032_core.py       # Lógica de comunicación y calibración
-    icon.ico            # Icono del programa (opcional)
+    core.py       # Lógica de comunicación y calibración
+    style.qss
+    translations.json #Textos multi-idioma
+    icons/
     README.md           # Este archivo
     dist/
         it032_gui.exe   # Ejecutable compilado con PyInstaller
@@ -59,43 +74,6 @@ O ejecuta directamente el archivo compilado (si está disponible):
 dist/it032_gui.exe
 
 ---
-
-## 🔌 Conexión y uso
-
-1. Conecta el equipo **IT 03.2** al ordenador mediante cable USB.
-2. Asegúrate de que el equipo esté en modo **PC** (selector físico).
-3. Ejecuta el programa y pulsa **“Conectar”**.
-4. Pulsa **“Iniciar”** para comenzar a recibir datos.
-5. Controla el ventilador y el calefactor desde los controles de la derecha.
-6. Observa en la gráfica y en las etiquetas las variables en tiempo real.
-7. Pulsa **“Detener”** o **“Salir”** para cerrar la sesión de medición.
-
----
-
-## 🧪 Calibración
-
-Antes de iniciar una práctica, puedes usar el botón **“Calibrar”**:  
-Esto toma muestras iniciales y aplica *offsets* para mejorar la estabilidad de lectura de los sensores.
-
----
-## 🧱 Compilación a ejecutable (.exe)
-
-Para generar el archivo ejecutable (sin necesidad de Python instalado):
-
-Instala PyInstaller:
-
-python -m pip install pyinstaller
-
-
-Desde la carpeta del proyecto:
-
-pyinstaller --noconfirm --onefile --windowed --icon=icon.ico it032_gui.py
-
-
-El ejecutable aparecerá en:
-
-dist/it032_gui.exe
-
 ## 🧩 Recomendaciones
 
 No desconectes el equipo mientras el programa esté recibiendo datos.

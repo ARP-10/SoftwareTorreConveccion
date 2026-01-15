@@ -8,64 +8,30 @@
 
 
 from PyQt6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QPushButton,
-    QLabel,
-    QVBoxLayout,
-    QWidget,
-    QHBoxLayout,
-    QGroupBox,
-    QDial,
-    QMessageBox,
-    QSlider,
-    QTableWidget,
-    QTableWidgetItem,
-    QFileDialog,
-    QCheckBox,
-    QFrame,
-    QHeaderView,
-    QSizePolicy,
-    QToolButton,
-    QMenu,
-    QDialog,
-    QLabel,
+    QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QHBoxLayout,
+    QGroupBox, QDial, QMessageBox, QSlider, QTableWidget, QTableWidgetItem,
+    QFileDialog, QCheckBox, QFrame, QHeaderView, QSizePolicy, QToolButton, QMenu,
+    QDialog, QGraphicsDropShadowEffect, QStyleFactory
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize, QSettings
-from PyQt6.QtGui import QFont, QIcon, QMovie
+from PyQt6.QtGui import QIcon, QMovie, QColor, QPalette
 import sys
 import time
-import pyqtgraph as pg
-import pandas as pd
-from PyQt6.QtSvgWidgets import QSvgWidget
-from datetime import datetime, timezone
 import json
 import requests
-from PyQt6.QtWidgets import QGraphicsDropShadowEffect
-from PyQt6.QtGui import QColor
-import core
 import webbrowser
-import base64
-import hmac
-import hashlib
+import pyqtgraph as pg
+import pandas as pd
+from datetime import datetime
 from pathlib import Path as PPath
-import sys
-import os
-
-_SECRET_MASK_B64 = "doipquDPxSVrMQN3X3N+/a+vNdTNXBSY/E28I72eZaU="
-_SECRET_XOR_B64 = "g7VN9n8tZyQ5aw3dwWRddBGtk7+83vz97snRS54GW7A="
-
-
-def get_embedded_secret_b64url() -> str:
-    mask = base64.b64decode(_SECRET_MASK_B64)
-    xval = base64.b64decode(_SECRET_XOR_B64)
-    secret_bytes = bytes(a ^ b for a, b in zip(xval, mask))
-    return base64.urlsafe_b64encode(secret_bytes).decode("ascii").rstrip("=")
+import core
+from license_lib import LicenseManager, LicenseConfig
+from license_lib.qt_adapter import QtLicenseUI
+from license_lib.errors import LicenseError
 
 
 API_BASE_URL = "https://iotnexus.dikoin.com/api"
 APP_VERSION = "1.0.0"
-
 
 class LoadingDialog(QDialog):
     def __init__(self, parent, text="Procesando..."):
@@ -376,10 +342,6 @@ class ReaderThread(QThread):
     def stop(self):
         self._running = False
 
-    if __name__ == "__main__":
-        app = QApplication(sys.argv)
-        app.setWindowIcon(QIcon(r"fotos\dikoin_logo.jpg"))
-
 
 # =======================================================
 # Ventana principal
@@ -406,6 +368,26 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(r"fotos\dikoin_logo.jpg"))
 
         self.resize(1500, 750)
+        
+        def _app_base_dir():
+            if getattr(sys, "frozen", False):
+                return PPath(sys.executable).parent
+            return PPath(__file__).parent
+
+        self.license_ui = QtLicenseUI(self, self.translations, self.current_lang)
+
+        cfg = LicenseConfig(
+            app_folder_name="HTlab",
+            settings_key="license/path",
+        )
+
+        self.license_manager = LicenseManager(
+            config=cfg,
+            base_dir=_app_base_dir(),
+            get_saved_path=lambda: self.settings.value(cfg.settings_key, ""),
+            set_saved_path=lambda p: self.settings.setValue(cfg.settings_key, p),
+            ui=self.license_ui,
+        )
 
         self.ser = None
         self.offsets = [0, 0, 0, 0, 0]
@@ -1016,334 +998,7 @@ class MainWindow(QMainWindow):
 
     def _unlock_ui_after_license(self):
         self.refresh_ui()
-
-    @staticmethod
-    def _parse_iso_dt(s: str):
-        if not s or not isinstance(s, str):
-            return None
-        s = s.strip()
-        try:
-            if s.endswith("Z"):
-                return datetime.fromisoformat(s[:-1]).replace(tzinfo=timezone.utc)
-            dt = datetime.fromisoformat(s)
-            return dt
-        except Exception:
-            try:
-                return datetime.strptime(s, "%Y-%m-%d")
-            except Exception:
-                return None
-
-    @staticmethod
-    def _check_license_dates(lic: dict):
-        start_keys = ["valid_from", "start_date", "issued_at", "created_at"]
-        end_keys = ["valid_to", "end_date", "expires_at", "expires_on", "expiry_date"]
-
-        start_dt = None
-        end_dt = None
-
-        for k in start_keys:
-            if k in lic:
-                start_dt = MainWindow._parse_iso_dt(lic.get(k))
-                if start_dt:
-                    break
-
-        for k in end_keys:
-            if k in lic:
-                end_dt = MainWindow._parse_iso_dt(lic.get(k))
-                if end_dt:
-                    break
-
-        # Si no hay fechas, no bloqueamos
-        if not start_dt and not end_dt:
-            return
-
-        now_utc = datetime.now(timezone.utc)
-
-        def to_utc(dt):
-            if dt is None:
-                return None
-            # si viene naive, la tratamos como local (si prefieres UTC estricto, se cambia)
-            if dt.tzinfo is None:
-                return dt
-            return dt.astimezone(timezone.utc)
-
-        start_cmp = to_utc(start_dt)
-        end_cmp = to_utc(end_dt)
-
-        if start_cmp and (
-            (start_cmp.tzinfo is None and datetime.now() < start_cmp)
-            or (start_cmp.tzinfo is not None and now_utc < start_cmp)
-        ):
-            raise RuntimeError("LICENSE_NOT_YET_VALID|" + str(start_dt))
-
-        if end_cmp and (
-            (end_cmp.tzinfo is None and datetime.now() > end_cmp)
-            or (end_cmp.tzinfo is not None and now_utc > end_cmp)
-        ):
-            raise RuntimeError("LICENSE_EXPIRED|" + str(end_dt))
-
-    def _candidate_license_paths(self, serial_number: str):
-        serial_number = str(serial_number).strip()
-        fname = f"{serial_number}.lic"
-
-        paths = []
-
-        # Carpeta del ejecutable (en EXE) o del script (en dev)
-        if getattr(sys, "frozen", False):
-            base_dir = PPath(sys.executable).parent
-        else:
-            base_dir = PPath(__file__).parent
-
-        # ✅ 0) RUTA RELATIVA: .\licencias\<serial>.lic
-        paths.append(base_dir / "licencias" / fname)
-
-        # (Opcional) también probar junto al exe: .\<serial>.lic
-        paths.append(base_dir / fname)
-
-        # ...el resto de rutas que ya tenías...
-        progdata = os.environ.get("PROGRAMDATA")
-        if progdata:
-            paths.append(PPath(progdata) / "HTlab" / fname)
-
-        saved = self.settings.value("license/path", "")
-        if saved:
-            paths.append(PPath(saved))
-
-        appdata = os.environ.get("APPDATA")
-        if appdata:
-            paths.append(PPath(appdata) / "HTlab" / fname)
-
-        paths.append(PPath.home() / "HTlab" / fname)
-
-        # quitar duplicados
-        uniq = []
-        for p in paths:
-            if p not in uniq:
-                uniq.append(p)
-        return uniq
-
-    def ask_for_license_file(self) -> str | None:
-        """
-        Muestra un cartel informativo antes de abrir el explorador.
-        Devuelve la ruta seleccionada o None si el usuario cancela.
-        """
-        t = self.translations.get(self.current_lang, self.translations.get("en", {}))
-        dlg = t.get("license_dialog", {})
-
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Icon.Information)
-        box.setWindowTitle(dlg.get("not_found_title", "License not found"))
-        box.setText(
-            dlg.get("not_found_message", "License file not found. Please locate it.")
-        )
-
-        btn_browse = box.addButton(
-            dlg.get("browse_button", "Browse"), QMessageBox.ButtonRole.AcceptRole
-        )
-        btn_cancel = box.addButton(
-            dlg.get("cancel_button", "Cancel"), QMessageBox.ButtonRole.RejectRole
-        )
-
-        box.exec()
-
-        if box.clickedButton() != btn_browse:
-            return None
-
-        selected, _ = QFileDialog.getOpenFileName(
-            self,
-            dlg.get("select_title", "Select your license (.lic)"),
-            str(PPath.home()),
-            dlg.get("file_filter", "License Files (*.lic);;All Files (*.*)"),
-        )
-        return selected or None
-
-    def verify_local_license(self, serial_number: str):
-        try:
-            serial_number = str(serial_number).strip()
-
-            # 1) buscar en rutas candidatas
-            lic_path = None
-            tried = []
-            for p in self._candidate_license_paths(serial_number):
-                tried.append(str(p))
-                if p.exists():
-                    lic_path = p
-                    break
-
-            # 2) si no aparece, pedir al usuario que seleccione el .lic una vez
-            if lic_path is None:
-                selected = self.ask_for_license_file()
-
-                if not selected:
-                    # usuario canceló -> cerrar programa
-                    raise RuntimeError("LICENSE_NOT_SELECTED")
-
-                lic_path = PPath(selected)
-                # guardar para próximas veces
-                self.settings.setValue("license/path", str(lic_path))
-
-            # 3) leer JSON
-            try:
-                lic_data = json.loads(lic_path.read_text(encoding="utf-8"))
-            except Exception as e:
-                raise RuntimeError(f"LICENSE_INVALID_JSON|{e}")
-
-            # 4) validar serial
-            serial_in_file = (
-                lic_data.get("machine_serial")
-                or lic_data.get("serial")
-                or lic_data.get("serial_number")
-            )
-            if str(serial_in_file).strip() != serial_number:
-                raise RuntimeError("LICENSE_WRONG_MACHINE")
-
-            # 5) validar fechas (ya lanza LICENSE_EXPIRED|... o LICENSE_NOT_YET_VALID|...)
-            MainWindow._check_license_dates(lic_data)
-
-            # 6) validar firma presente
-            sig = lic_data.get("signature") or lic_data.get("sig")
-            if not sig:
-                raise RuntimeError("LICENSE_MISSING_SIGNATURE")
-
-            # 7) verificar firma
-            secret_b64url = get_embedded_secret_b64url()
-            pad = "=" * (-len(secret_b64url) % 4)
-            secret_bytes = base64.urlsafe_b64decode(secret_b64url + pad)
-
-            payload = dict(lic_data)
-            payload.pop("signature", None)
-            payload.pop("sig", None)
-
-            canonical = json.dumps(
-                payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-            ).encode("utf-8")
-
-            mac = hmac.new(secret_bytes, canonical, hashlib.sha256).digest()
-            mac_b64url = base64.urlsafe_b64encode(mac).decode("ascii").rstrip("=")
-
-            if not hmac.compare_digest(mac_b64url, str(sig).strip()):
-                raise RuntimeError("LICENSE_INVALID_SIGNATURE")
-
-            print(f"✅ Licencia válida: {lic_path}")
-
-        except Exception as e:
-            # ===== Traducción de errores (NO hardcode en español) =====
-            t = self.translations.get(
-                self.current_lang, self.translations.get("en", {})
-            )
-            lic = t.get("license_dialog", {})
-
-            err = str(e)
-
-            # helper para extraer payload tras "|"
-            def after_pipe(s: str) -> str:
-                return s.split("|", 1)[1] if "|" in s else ""
-
-            if err.startswith("LICENSE_NOT_SELECTED"):
-                body = lic.get("not_selected", "No license was selected.")
-
-            elif err.startswith("LICENSE_INVALID_JSON"):
-                details = after_pipe(err)
-                body = lic.get(
-                    "invalid_json", "The license file is not valid JSON:\n{details}"
-                ).format(details=details)
-
-            elif err.startswith("LICENSE_WRONG_MACHINE"):
-                body = lic.get(
-                    "wrong_machine", "This license does not match this machine."
-                )
-
-            elif err.startswith("LICENSE_MISSING_SIGNATURE"):
-                body = lic.get(
-                    "missing_signature", "The license does not contain a signature."
-                )
-
-            elif err.startswith("LICENSE_INVALID_SIGNATURE"):
-                body = lic.get("invalid_signature", "Invalid license signature.")
-
-            elif err.startswith("LICENSE_NOT_YET_VALID"):
-                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
-                body = lic.get(
-                    "not_yet_valid", "License not valid yet.\nValid from: {date}"
-                ).format(date=date)
-
-            elif err.startswith("LICENSE_EXPIRED"):
-                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
-                body = lic.get(
-                    "expired", "License expired.\nExpiry date: {date}"
-                ).format(date=date)
-
-            else:
-                # fallback genérico
-                body = lic.get(
-                    "invalid_body", "The license could not be validated:\n\n{error}"
-                ).format(error=err)
-
-            QMessageBox.critical(
-                self,
-                lic.get("invalid_title", "Invalid license"),
-                body,
-            )
-
-            self.bloquear_todo(True)
-            self.close()
-
-        except Exception as e:
-            t = self.translations.get(
-                self.current_lang, self.translations.get("en", {})
-            )
-            lic = t.get("license_dialog", {})
-
-            err = str(e)
-
-            def after_pipe(s: str) -> str:
-                return s.split("|", 1)[1] if "|" in s else ""
-
-            # Mapa: código de error -> key de translations.json
-            error_key_map = {
-                "LICENSE_NOT_SELECTED": "not_selected",
-                "LICENSE_INVALID_JSON": "invalid_json",
-                "LICENSE_WRONG_MACHINE": "wrong_machine",
-                "LICENSE_MISSING_SIGNATURE": "missing_signature",
-                "LICENSE_INVALID_SIGNATURE": "invalid_signature",
-                "LICENSE_NOT_YET_VALID": "not_yet_valid",
-                "LICENSE_EXPIRED": "expired",
-            }
-
-            # Detectar qué código es
-            code = next(
-                (k for k in error_key_map.keys() if err.startswith(k)), "UNKNOWN"
-            )
-
-            # Construir body según el caso
-            if code == "LICENSE_INVALID_JSON":
-                details = after_pipe(err)
-                body = lic["invalid_json"].format(details=details)
-
-            elif code == "LICENSE_NOT_YET_VALID":
-                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
-                body = lic["not_yet_valid"].format(date=date)
-
-            elif code == "LICENSE_EXPIRED":
-                date = after_pipe(err).split("T", 1)[0].split(" ", 1)[0]
-                body = lic["expired"].format(date=date)
-
-            elif code == "UNKNOWN":
-                body = lic["invalid_body"].format(error=err)
-
-            else:
-                # resto: mensajes sin parámetros
-                body = lic[error_key_map[code]]
-
-            QMessageBox.critical(
-                self,
-                lic["invalid_title"],
-                body,
-            )
-
-            self.bloquear_todo(True)
-            self.close()
-
+    
     def try_auto_connect(self):
         # No reintentar si estamos cerrando o ya hay conexión
         if self.is_closing:
@@ -2057,6 +1712,8 @@ class MainWindow(QMainWindow):
         self.settings.setValue("ui/language", lang)
         self.btn_about.setText(t.get("about_button", "About"))
         self.action_check_updates.setText(t.get("check_updates", "Check for updates"))
+        if hasattr(self, "license_ui"):
+            self.license_ui.lang = self.current_lang
 
     # =======================================================
     # FUNCIONES PRINCIPALES
@@ -2205,7 +1862,16 @@ class MainWindow(QMainWindow):
                 self.serial_number_detected = serial_number
 
                 # 1) LICENCIA (obligatoria)
-                self.verify_local_license(serial_number)  # si falla, cierra
+                try:
+                    lic_data = self.license_manager.ensure_valid(serial_number)
+                    # opcional: guardar info útil
+                    self.license_payload = lic_data
+                except LicenseError as e:
+                    # mostrar con traducciones + cerrar
+                    self.license_ui.show_error(e)
+                    self.bloquear_todo(True)
+                    self.close()
+                    return
 
                 # 2) API (si hay internet; si falla por red, seguimos igual)
                 self.api_ok = self.verify_machine_with_api(serial_number)
@@ -2659,29 +2325,29 @@ if __name__ == "__main__":
     with open("style.qss", "r", encoding="utf-8") as f:
         app.setStyleSheet(f.read())
 
-window = MainWindow()
+    window = MainWindow()
 
-window.show()
-loading = LoadingDialog(window, "Cargando programa…")
-loading.show()
-
-
-def on_startup_finished(ok, msg):
-    if not ok:
-        loading.close()
-        QMessageBox.warning(window, "Error", msg)
-        window.close()
-        return
-
-    # ✅ Mostrar ventana pero el spinner sigue encima
     window.show()
+    loading = LoadingDialog(window, "Cargando programa…")
+    loading.show()
 
-    # ✅ Guardar referencia del loading en la ventana
-    window.startup_loading = loading
+
+    def on_startup_finished(ok, msg):
+        if not ok:
+            loading.close()
+            QMessageBox.warning(window, "Error", msg)
+            window.close()
+            return
+
+        # ✅ Mostrar ventana pero el spinner sigue encima
+        window.show()
+
+        # ✅ Guardar referencia del loading en la ventana
+        window.startup_loading = loading
 
 
-worker = StartupWorker(window)
-worker.finished.connect(on_startup_finished)
-worker.start()
+    worker = StartupWorker(window)
+    worker.finished.connect(on_startup_finished)
+    worker.start()
 
-sys.exit(app.exec())
+    sys.exit(app.exec())
