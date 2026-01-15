@@ -5,7 +5,7 @@ a = Analysis(
     ['it032_gui.py'],
     pathex=[],
     binaries=[],
-    datas=[('translations.json', '.'), ('style.qss', '.'), ('icons', 'icons'), ('fotos', 'fotos')],
+    datas=[('fotos', 'fotos'), ('icons', 'icons'), ('translations.json', '.'), ('style.qss', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
